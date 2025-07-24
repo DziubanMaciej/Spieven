@@ -1,0 +1,3 @@
+.vscode/*
+!.vscode/launch.json
+test_scripts/log.txt
