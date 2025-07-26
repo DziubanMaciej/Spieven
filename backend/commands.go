@@ -6,7 +6,7 @@ import (
 	"supervisor/common"
 )
 
-func CmdSummary(frontendConnection net.Conn) error {
+func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 	fmt.Printf("Summary\n")
 
 	response := common.SummaryResponseBody{
@@ -27,7 +27,7 @@ func CmdSummary(frontendConnection net.Conn) error {
 	return nil
 }
 
-func CmdRegister(request common.RegisterBody) error {
+func CmdRegister(backendState *BackendState, request common.RegisterBody) error {
 	process_description := ProcessDescription{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -35,6 +35,9 @@ func CmdRegister(request common.RegisterBody) error {
 		MaxSubsequentFailures: 3,
 	}
 
-	go HandleProcess(process_description)
+	registered := backendState.processes.TryRegisterProcess(&process_description)
+	if registered {
+		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
+	}
 	return nil
 }

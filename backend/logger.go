@@ -109,7 +109,8 @@ func (log *FileLogger) stop() {
 func (log *FileLogger) streamOutput(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		log.channel <- stdoutMessage(scanner.Text())
+		t := scanner.Text()
+		log.channel <- stdoutMessage(t)
 	}
 
 	if err := scanner.Err(); err != nil {

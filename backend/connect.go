@@ -24,7 +24,7 @@ func ValidateHandshake(connection net.Conn) error {
 	return nil
 }
 
-func HandleConnection(connection net.Conn) {
+func HandleConnection(backendState *BackendState, connection net.Conn) {
 	defer connection.Close()
 
 	if err := ValidateHandshake(connection); err != nil {
@@ -43,7 +43,7 @@ func HandleConnection(connection net.Conn) {
 			if err != nil {
 				return
 			}
-			err = CmdSummary(connection)
+			err = CmdSummary(backendState, connection)
 			if err != nil {
 				return
 			}
@@ -52,7 +52,7 @@ func HandleConnection(connection net.Conn) {
 			if err != nil {
 				return
 			}
-			err = CmdRegister(process_description)
+			err = CmdRegister(backendState, process_description)
 			if err != nil {
 				return
 			}
@@ -64,6 +64,8 @@ func HandleConnection(connection net.Conn) {
 }
 
 func RunServer() error {
+	var backendState BackendState
+
 	// Create socket
 	listener, err := net.Listen("tcp4", common.HostWithPort)
 	if err != nil {
@@ -78,6 +80,6 @@ func RunServer() error {
 			return err
 		}
 
-		go HandleConnection(connection)
+		go HandleConnection(&backendState, connection)
 	}
 }

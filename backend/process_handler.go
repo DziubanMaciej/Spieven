@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"os/exec"
+	"sync"
 )
 
 type ProcessDescription struct {
@@ -10,6 +11,32 @@ type ProcessDescription struct {
 	Cwd                   string
 	OutFilePath           string
 	MaxSubsequentFailures int
+	Hash                  int
+}
+
+func (desc *ProcessDescription) CalculateHash() {
+	desc.Hash = 123 // TODO
+}
+
+type RunningProcesses struct {
+	processes []ProcessDescription
+	lock      sync.Mutex
+}
+
+func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescription) bool {
+	processes.lock.Lock()
+	defer processes.lock.Unlock()
+
+	// Search whether we already have a process like this
+	for _, currDesc := range processes.processes {
+		if currDesc.Hash == newDesc.Hash {
+			return false
+		}
+	}
+
+	processes.processes = append(processes.processes, *newDesc)
+	go HandleProcess(*newDesc)
+	return true
 }
 
 func HandleProcess(processDescription ProcessDescription) error {
@@ -51,6 +78,7 @@ func HandleProcess(processDescription ProcessDescription) error {
 		go func() {
 			status := 0
 			err := cmd.Wait()
+
 			if err != nil {
 				status = err.(*exec.ExitError).ExitCode()
 			}
