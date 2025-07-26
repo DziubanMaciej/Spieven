@@ -72,6 +72,7 @@ func DecodeHandshakePacket(packet Packet) (result int, err error) {
 type RegisterBody struct {
 	Cmdline   []string
 	Cwd       string
+	Env       []string
 	UserIndex int
 }
 

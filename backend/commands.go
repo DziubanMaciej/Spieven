@@ -51,6 +51,7 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 		Cwd:                   request.Cwd, // TODO compute this if empty
 		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
 		MaxSubsequentFailures: 3,
+		Env:                   request.Env,
 		UserIndex:             request.UserIndex,
 	}
 

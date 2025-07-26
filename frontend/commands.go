@@ -3,6 +3,7 @@ package frontend
 import (
 	"fmt"
 	"net"
+	"os"
 	"supervisor/common"
 )
 
@@ -78,6 +79,7 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error
 	body := common.RegisterBody{
 		Cmdline:   args,
 		Cwd:       "",
+		Env:       os.Environ(),
 		UserIndex: userIndex,
 	}
 

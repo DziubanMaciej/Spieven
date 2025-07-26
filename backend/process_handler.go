@@ -12,6 +12,7 @@ type ProcessDescription struct {
 	Id                    int
 	Cmdline               []string
 	Cwd                   string
+	Env                   []string
 	OutFilePath           string
 	MaxSubsequentFailures int
 	Hash                  int
@@ -106,6 +107,7 @@ MainLoop:
 		defer cmdCancel()
 		cmd := exec.CommandContext(cmdContext, processDescription.Cmdline[0], processDescription.Cmdline[1:]...)
 		cmd.Dir = processDescription.Cwd
+		cmd.Env = processDescription.Env
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
 			backendMessages.Add(BackendMessageError, "failed to create stdout pipe")
