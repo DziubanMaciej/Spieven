@@ -5,7 +5,16 @@ import (
 	"hash/fnv"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
+)
+
+type DisplayType byte
+
+const (
+	DisplayNone DisplayType = iota
+	DisplayXorg
+	DisplayWayland
 )
 
 type ProcessDescription struct {
@@ -17,12 +26,14 @@ type ProcessDescription struct {
 	UserIndex             int
 
 	Computed struct {
-		Id   int
-		Hash int
+		Id          int
+		Hash        int
+		DisplayType DisplayType
+		DisplayName string
 	}
 }
 
-func (desc *ProcessDescription) CalculateHash() int {
+func (desc *ProcessDescription) ComputeHash() {
 	h := fnv.New32a()
 
 	writeInt := func(val int) {
@@ -43,7 +54,36 @@ func (desc *ProcessDescription) CalculateHash() int {
 	writeInt(desc.MaxSubsequentFailures)
 	writeInt(desc.UserIndex)
 
-	return int(h.Sum32())
+	desc.Computed.Hash = int(h.Sum32())
+}
+
+func (desc *ProcessDescription) ComputeDisplay() {
+	// Search the env variable for display-related settings.
+	var displayVar string
+	var waylandDisplayVar string
+	for _, currentVar := range desc.Env {
+		parts := strings.SplitN(currentVar, "=", 2)
+		switch parts[0] {
+		case "DISPLAY":
+			displayVar = parts[1]
+		case "WAYLAND_DISPLAY":
+			waylandDisplayVar = parts[1]
+		}
+	}
+
+	// Select one of three DisplayType options based on those envs. Technically, if app has both DISPLAY and WAYLAND_DISPLAY
+	// it could choose either one, e.g. based on argv or some config file. In general we cannot know which one it'll use.
+	// It could even use both. Just prefer Wayland for simplicity.
+	if waylandDisplayVar != "" {
+		desc.Computed.DisplayType = DisplayWayland
+		desc.Computed.DisplayName = waylandDisplayVar
+	} else if displayVar != "" {
+		desc.Computed.DisplayType = DisplayXorg
+		desc.Computed.DisplayName = displayVar
+	} else {
+		desc.Computed.DisplayType = DisplayNone
+		desc.Computed.DisplayName = ""
+	}
 }
 
 type RunningProcesses struct {
@@ -57,7 +97,8 @@ func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescriptio
 	defer processes.lock.Unlock()
 
 	// Calculate process hash and skip registering if we already have it.
-	newDesc.Computed.Hash = newDesc.CalculateHash()
+	newDesc.ComputeHash()
+	newDesc.ComputeDisplay()
 	for _, currDesc := range processes.processes {
 		if currDesc.Computed.Hash == newDesc.Computed.Hash {
 			return false
