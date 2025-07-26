@@ -5,6 +5,7 @@ import (
 	"os"
 	"supervisor/backend"
 	"supervisor/frontend"
+	"supervisor/watchxorg"
 
 	"github.com/spf13/cobra"
 )
@@ -45,6 +46,28 @@ func main() {
 		},
 	}
 	noParamsCmd.AddCommand(listCmd)
+
+	probeX11Cmd := &cobra.Command{
+		Use:           "watchxorg [display]",
+		Hidden:        true,
+		Args:          cobra.ExactArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dpyName := args[0]
+			dpy := watchxorg.TryConnectXorg(dpyName)
+			if dpy == nil {
+				return fmt.Errorf("could not connect to xorg %v", dpyName)
+			}
+
+			fmt.Printf("Connected to xorg %v\n", dpyName)
+			watchxorg.WatchXorgActive(dpy)
+			watchxorg.DisconnectXorg(dpy)
+			fmt.Printf("Disconnected from xorg %v\n", dpyName)
+			return nil
+		},
+	}
+	noParamsCmd.AddCommand(probeX11Cmd)
 
 	registerCmd := &cobra.Command{
 		Use:   "register command [args...]",
