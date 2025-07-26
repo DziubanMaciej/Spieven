@@ -94,12 +94,24 @@ MainLoop:
 			break
 		}
 		log.channel <- diagnosticMessageF("Process \"%v\" started", processDescription.Cmdline[0])
-		go log.streamOutput(stdoutPipe)
-		go log.streamOutput(stderrPipe)
+
+		// Run pipe reading goroutines
+		var pipeWaitGroup sync.WaitGroup
+		pipeWaitGroup.Add(2)
+		go func() {
+			log.streamOutput(stdoutPipe)
+			pipeWaitGroup.Done()
+		}()
+		go func() {
+			log.streamOutput(stderrPipe)
+			pipeWaitGroup.Done()
+		}()
 
 		// Wait for the process in the background
 		processResultChannel := make(chan int)
 		go func() {
+			pipeWaitGroup.Wait()
+
 			status := 0
 			err := cmd.Wait()
 
