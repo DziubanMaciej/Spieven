@@ -29,7 +29,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 	for i, processDescription := range processes.processes {
 		responseItem := &response[i]
 
-		responseItem.Id = processDescription.Id
+		responseItem.Id = processDescription.Computed.Id
 		responseItem.Cmdline = processDescription.Cmdline
 		responseItem.Cwd = processDescription.Cwd
 		responseItem.OutFilePath = processDescription.OutFilePath

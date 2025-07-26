@@ -9,14 +9,17 @@ import (
 )
 
 type ProcessDescription struct {
-	Id                    int
 	Cmdline               []string
 	Cwd                   string
 	Env                   []string
 	OutFilePath           string
 	MaxSubsequentFailures int
-	Hash                  int
 	UserIndex             int
+
+	Computed struct {
+		Id   int
+		Hash int
+	}
 }
 
 func (desc *ProcessDescription) CalculateHash() int {
@@ -54,15 +57,15 @@ func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescriptio
 	defer processes.lock.Unlock()
 
 	// Calculate process hash and skip registering if we already have it.
-	newDesc.Hash = newDesc.CalculateHash()
+	newDesc.Computed.Hash = newDesc.CalculateHash()
 	for _, currDesc := range processes.processes {
-		if currDesc.Hash == newDesc.Hash {
+		if currDesc.Computed.Hash == newDesc.Computed.Hash {
 			return false
 		}
 	}
 
 	// Assign unique ID to the process. Note it isn't part of the hash above.
-	newDesc.Id = processes.currentId
+	newDesc.Computed.Id = processes.currentId
 	processes.currentId++
 
 	processes.processes = append(processes.processes, *newDesc)
@@ -78,7 +81,7 @@ func (processes *RunningProcesses) TryUnregisterProcess(newDesc *ProcessDescript
 	var processesRemoved int
 
 	for _, currDesc := range processes.processes {
-		if currDesc.Hash == newDesc.Hash {
+		if currDesc.Computed.Hash == newDesc.Computed.Hash {
 			processesRemoved++
 		} else {
 			newProcesses = append(newProcesses, currDesc)
