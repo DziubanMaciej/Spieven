@@ -15,6 +15,7 @@ const (
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
+	PacketIdRegisterResponse
 )
 
 type Packet struct {
@@ -99,5 +100,14 @@ func EncodeSummaryResponsePacket(data SummaryResponseBody) (Packet, error) {
 
 func DecodeSummaryResponsePacket(packet Packet) (result SummaryResponseBody, err error) {
 	err = DecodePacket(packet, PacketIdRegister, &result)
+	return
+}
+
+func EncodeRegisterResponsePacket(value bool) (Packet, error) {
+	return EncodePacket(PacketIdRegisterResponse, &value)
+}
+
+func DecodeRegisterResponsePacket(packet Packet) (result bool, err error) {
+	err = DecodePacket(packet, PacketIdRegisterResponse, &result)
 	return
 }

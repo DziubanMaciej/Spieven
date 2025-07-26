@@ -52,7 +52,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-			err = CmdRegister(backendState, process_description)
+			err = CmdRegister(backendState, connection, process_description)
 			if err != nil {
 				return
 			}

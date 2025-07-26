@@ -43,5 +43,26 @@ func CmdRegister(backendConnection net.Conn, args []string) error {
 		return err
 	}
 
-	return common.SendPacket(backendConnection, packet)
+	err = common.SendPacket(backendConnection, packet)
+	if err != nil {
+		return err
+	}
+
+	response_packet, err := common.ReceivePacket(backendConnection)
+	if err != nil {
+		return err
+	}
+
+	registered, err := common.DecodeRegisterResponsePacket(response_packet)
+	if err != nil {
+		return err
+	}
+
+	if registered {
+		fmt.Println("Process registered")
+	} else {
+		fmt.Println("Process already running")
+	}
+
+	return nil
 }

@@ -19,15 +19,10 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 		return err
 	}
 
-	err = common.SendPacket(frontendConnection, packet)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return common.SendPacket(frontendConnection, packet)
 }
 
-func CmdRegister(backendState *BackendState, request common.RegisterBody) error {
+func CmdRegister(backendState *BackendState, frontendConnection net.Conn, request common.RegisterBody) error {
 	process_description := ProcessDescription{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -38,6 +33,14 @@ func CmdRegister(backendState *BackendState, request common.RegisterBody) error 
 	registered := backendState.processes.TryRegisterProcess(&process_description, &backendState.messages)
 	if registered {
 		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
+	} else {
+		backendState.messages.Add(BackendMessageInfo, "Did not register process, because it's already running")
 	}
-	return nil
+
+	packet, err := common.EncodeRegisterResponsePacket(registered)
+	if err != nil {
+		return err
+	}
+
+	return common.SendPacket(frontendConnection, packet)
 }
