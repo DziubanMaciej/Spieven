@@ -19,6 +19,7 @@ type BackendMessage struct {
 	date     time.Time
 	severity BackendMessageSeverity
 	content  string
+	// TODO add process description and find some way to log nicely. Maybe allow setting "friendlyName" for each process?
 }
 
 func (msg *BackendMessage) String() string {
@@ -62,7 +63,7 @@ func (messages *BackendMessages) Add(severity BackendMessageSeverity, content st
 		content:  content,
 	}
 
-	fmt.Println(msg.String())
+	fmt.Print(msg.String())
 
 	messages.lock.Lock()
 	messages.messages = append(messages.messages, msg)

@@ -23,7 +23,7 @@ type RunningProcesses struct {
 	lock      sync.Mutex
 }
 
-func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescription) bool {
+func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescription, backendMessages *BackendMessages) bool {
 	processes.lock.Lock()
 	defer processes.lock.Unlock()
 
@@ -35,20 +35,41 @@ func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescriptio
 	}
 
 	processes.processes = append(processes.processes, *newDesc)
-	go HandleProcess(*newDesc)
+	go HandleProcess(*newDesc, processes, backendMessages)
 	return true
 }
 
-func HandleProcess(processDescription ProcessDescription) error {
-	// Initialize logger
+func (processes *RunningProcesses) TryUnregisterProcess(newDesc *ProcessDescription) bool {
+	processes.lock.Lock()
+	defer processes.lock.Unlock()
+
+	var newProcesses []ProcessDescription
+	var processesRemoved int
+
+	for _, currDesc := range processes.processes {
+		if currDesc.Hash == newDesc.Hash {
+			processesRemoved++
+		} else {
+			newProcesses = append(newProcesses, currDesc)
+		}
+	}
+
+	processes.processes = newProcesses
+	return processesRemoved > 0 // TODO make some warning if it was greater than 1
+}
+
+func HandleProcess(processDescription ProcessDescription, processes *RunningProcesses, backendMessages *BackendMessages) {
+	// Initialize per-process logger
 	log := CreateFileLogger(processDescription.OutFilePath)
 	err := log.run()
 	if err != nil {
-		return err
+		backendMessages.Add(BackendMessageError, "failed to create per-process logger")
+		return
 	}
 	defer log.stop()
 
 	subsequentFailures := 0
+MainLoop:
 	for {
 		// Initialize the process struct
 		cmdContext, cmdCancel := context.WithCancel(context.Background())
@@ -57,17 +78,20 @@ func HandleProcess(processDescription ProcessDescription) error {
 		cmd.Dir = processDescription.Cwd
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
-			return err
+			backendMessages.Add(BackendMessageError, "failed to create stdout pipe")
+			break
 		}
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			backendMessages.Add(BackendMessageError, "failed to create stdout pipe")
+			break
 		}
 
 		// Start the process
 		err = cmd.Start()
 		if err != nil {
-			return err
+			backendMessages.Add(BackendMessageError, "failed to start process")
+			break
 		}
 		log.channel <- diagnosticMessageF("Process \"%v\" started", processDescription.Cmdline[0])
 		go log.streamOutput(stdoutPipe)
@@ -96,16 +120,21 @@ func HandleProcess(processDescription ProcessDescription) error {
 			} else {
 				subsequentFailures++
 			}
-		case loggingError := <-log.errorChannel:
+		case <-log.errorChannel:
 			// Logger failed. We don't want to execute processes without logging. Kill the process and return error.
 			cmdCancel()
-			return loggingError
+			backendMessages.Add(BackendMessageError, "failed logging")
+			break MainLoop
 		}
 
 		// Handle breaks from the main loop
 		if processDescription.MaxSubsequentFailures >= 0 && subsequentFailures >= processDescription.MaxSubsequentFailures {
 			log.channel <- diagnosticMessageF("Process reached subsequent failure count limit of %v. Exiting", processDescription.MaxSubsequentFailures)
-			return nil // TODO error?
+			break
 		}
+	}
+
+	if processes.TryUnregisterProcess(&processDescription) {
+		backendMessages.Add(BackendMessageInfo, "Unregistered process")
 	}
 }

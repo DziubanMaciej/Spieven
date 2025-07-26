@@ -35,7 +35,7 @@ func CmdRegister(backendState *BackendState, request common.RegisterBody) error 
 		MaxSubsequentFailures: 3,
 	}
 
-	registered := backendState.processes.TryRegisterProcess(&process_description)
+	registered := backendState.processes.TryRegisterProcess(&process_description, &backendState.messages)
 	if registered {
 		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
 	}
