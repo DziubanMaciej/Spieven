@@ -64,6 +64,7 @@ func CmdList(backendConnection net.Conn) error {
 		fmt.Printf("Cwd:                   %v\n", process.Cwd)
 		fmt.Printf("OutFilePath:           %v\n", process.OutFilePath)
 		fmt.Printf("MaxSubsequentFailures: %v\n", process.MaxSubsequentFailures)
+		fmt.Printf("UserIndex:             %v\n", process.UserIndex)
 
 		if i < len(response)-1 {
 			fmt.Println()
@@ -73,10 +74,11 @@ func CmdList(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdRegister(backendConnection net.Conn, args []string) error {
+func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error {
 	body := common.RegisterBody{
-		Cmdline: args,
-		Cwd:     "",
+		Cmdline:   args,
+		Cwd:       "",
+		UserIndex: userIndex,
 	}
 
 	packet, err := common.EncodeRegisterPacket(body)

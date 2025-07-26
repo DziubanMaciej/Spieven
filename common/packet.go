@@ -70,8 +70,9 @@ func DecodeHandshakePacket(packet Packet) (result int, err error) {
 }
 
 type RegisterBody struct {
-	Cmdline []string
-	Cwd     string
+	Cmdline   []string
+	Cwd       string
+	UserIndex int
 }
 
 func EncodeRegisterPacket(processDescription RegisterBody) (Packet, error) {
@@ -128,6 +129,7 @@ type ListResponseBody []struct {
 	Cwd                   string
 	OutFilePath           string
 	MaxSubsequentFailures int
+	UserIndex             int
 }
 
 func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {

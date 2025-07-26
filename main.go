@@ -51,14 +51,20 @@ func main() {
 		Short: "Register process to execute",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			userIndex, err := cmd.Flags().GetInt("userIndex")
+			if err != nil {
+				return err
+			}
+
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = frontend.CmdRegister(connection, args)
+				err = frontend.CmdRegister(connection, args, userIndex)
 			}
 			return err
 		},
 	}
+	registerCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different processes with the same settings. Does not serve any purpose other than to allow for duplicate processes running.")
 	noParamsCmd.AddCommand(registerCmd)
 
 	err := noParamsCmd.Execute()

@@ -34,6 +34,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 		responseItem.Cwd = processDescription.Cwd
 		responseItem.OutFilePath = processDescription.OutFilePath
 		responseItem.MaxSubsequentFailures = processDescription.MaxSubsequentFailures
+		responseItem.UserIndex = processDescription.UserIndex
 	}
 
 	packet, err := common.EncodeListResponsePacket(response)
@@ -50,6 +51,7 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 		Cwd:                   request.Cwd, // TODO compute this if empty
 		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
 		MaxSubsequentFailures: 3,
+		UserIndex:             request.UserIndex,
 	}
 
 	registered := backendState.processes.TryRegisterProcess(&process_description, &backendState.messages)

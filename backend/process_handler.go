@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"hash/fnv"
 	"os/exec"
+	"strconv"
 	"sync"
 )
 
@@ -13,10 +15,31 @@ type ProcessDescription struct {
 	OutFilePath           string
 	MaxSubsequentFailures int
 	Hash                  int
+	UserIndex             int
 }
 
-func (desc *ProcessDescription) CalculateHash() {
-	desc.Hash = 123 // TODO
+func (desc *ProcessDescription) CalculateHash() int {
+	h := fnv.New32a()
+
+	writeInt := func(val int) {
+		h.Write([]byte(strconv.Itoa(val)))
+	}
+	writeString := func(val string) {
+		h.Write([]byte(val))
+	}
+	writeStrings := func(val []string) {
+		for _, s := range val {
+			writeString(s)
+		}
+	}
+
+	writeStrings(desc.Cmdline)
+	writeString(desc.Cwd)
+	writeString(desc.OutFilePath)
+	writeInt(desc.MaxSubsequentFailures)
+	writeInt(desc.UserIndex)
+
+	return int(h.Sum32())
 }
 
 type RunningProcesses struct {
@@ -29,14 +52,15 @@ func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescriptio
 	processes.lock.Lock()
 	defer processes.lock.Unlock()
 
-	// Skip if we already have a process like this
+	// Calculate process hash and skip registering if we already have it.
+	newDesc.Hash = newDesc.CalculateHash()
 	for _, currDesc := range processes.processes {
 		if currDesc.Hash == newDesc.Hash {
 			return false
 		}
 	}
 
-	// Assign unique ID to the process
+	// Assign unique ID to the process. Note it isn't part of the hash above.
 	newDesc.Id = processes.currentId
 	processes.currentId++
 
