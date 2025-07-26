@@ -12,10 +12,12 @@ const (
 	PacketIdHandshake PacketId = iota
 	PacketIdRegister
 	PacketIdSummary
+	PacketIdList
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
 	PacketIdRegisterResponse
+	PacketIdListResponse
 )
 
 type Packet struct {
@@ -109,5 +111,30 @@ func EncodeRegisterResponsePacket(value bool) (Packet, error) {
 
 func DecodeRegisterResponsePacket(packet Packet) (result bool, err error) {
 	err = DecodePacket(packet, PacketIdRegisterResponse, &result)
+	return
+}
+
+func EncodeListPacket() (Packet, error) {
+	return EncodePacket(PacketIdList, nil)
+}
+
+func DecodeListPacket(packet Packet) error {
+	return DecodePacket(packet, PacketIdList, nil)
+}
+
+type ListResponseBody []struct {
+	Id                    int
+	Cmdline               []string
+	Cwd                   string
+	OutFilePath           string
+	MaxSubsequentFailures int
+}
+
+func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdListResponse, body)
+}
+
+func DecodeListResponsePacket(packet Packet) (result ListResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdListResponse, &result)
 	return
 }

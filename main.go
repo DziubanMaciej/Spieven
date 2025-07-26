@@ -32,6 +32,20 @@ func main() {
 	}
 	noParamsCmd.AddCommand(summaryCmd)
 
+	listCmd := &cobra.Command{
+		Use:   "list",
+		Short: "Display a list of running processes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			connection, err := frontend.ConnectToBackend()
+			if err == nil {
+				defer connection.Close()
+				err = frontend.CmdList(connection)
+			}
+			return err
+		},
+	}
+	noParamsCmd.AddCommand(listCmd)
+
 	registerCmd := &cobra.Command{
 		Use:   "register command [args...]",
 		Short: "Register process to execute",

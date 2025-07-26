@@ -1,14 +1,11 @@
 package backend
 
 import (
-	"fmt"
 	"net"
 	"supervisor/common"
 )
 
 func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
-	fmt.Printf("Summary\n")
-
 	response := common.SummaryResponseBody{
 		Version:         "1.0",
 		ConnectionCount: 4,
@@ -22,10 +19,35 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 	return common.SendPacket(frontendConnection, packet)
 }
 
+func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
+	processes := &backendState.processes
+	processes.lock.Lock()
+	defer processes.lock.Unlock()
+
+	response := make(common.ListResponseBody, len(processes.processes))
+
+	for i, processDescription := range processes.processes {
+		responseItem := &response[i]
+
+		responseItem.Id = processDescription.Id
+		responseItem.Cmdline = processDescription.Cmdline
+		responseItem.Cwd = processDescription.Cwd
+		responseItem.OutFilePath = processDescription.OutFilePath
+		responseItem.MaxSubsequentFailures = processDescription.MaxSubsequentFailures
+	}
+
+	packet, err := common.EncodeListResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return common.SendPacket(frontendConnection, packet)
+}
+
 func CmdRegister(backendState *BackendState, frontendConnection net.Conn, request common.RegisterBody) error {
 	process_description := ProcessDescription{
 		Cmdline:               request.Cmdline,
-		Cwd:                   request.Cwd,
+		Cwd:                   request.Cwd, // TODO compute this if empty
 		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
 		MaxSubsequentFailures: 3,
 	}

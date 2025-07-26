@@ -7,6 +7,7 @@ import (
 )
 
 type ProcessDescription struct {
+	Id                    int
 	Cmdline               []string
 	Cwd                   string
 	OutFilePath           string
@@ -20,6 +21,7 @@ func (desc *ProcessDescription) CalculateHash() {
 
 type RunningProcesses struct {
 	processes []ProcessDescription
+	currentId int
 	lock      sync.Mutex
 }
 
@@ -27,12 +29,16 @@ func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescriptio
 	processes.lock.Lock()
 	defer processes.lock.Unlock()
 
-	// Search whether we already have a process like this
+	// Skip if we already have a process like this
 	for _, currDesc := range processes.processes {
 		if currDesc.Hash == newDesc.Hash {
 			return false
 		}
 	}
+
+	// Assign unique ID to the process
+	newDesc.Id = processes.currentId
+	processes.currentId++
 
 	processes.processes = append(processes.processes, *newDesc)
 	go HandleProcess(*newDesc, processes, backendMessages)
