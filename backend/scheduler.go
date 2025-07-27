@@ -36,7 +36,15 @@ func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendM
 	scheduler.tasks = newTasks
 }
 
-func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
+type ScheduleResult byte
+
+const (
+	ScheduleResultSuccess ScheduleResult = iota
+	ScheduleResultAlreadyRunning
+	ScheduleResultInvalidDisplay
+)
+
+func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	scheduler := &backendState.scheduler
 
 	scheduler.lock.Lock()
@@ -46,7 +54,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	newTask.Init(scheduler.currentId)
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated && currTask.Computed.Hash == newTask.Computed.Hash {
-			return false
+			return ScheduleResultAlreadyRunning
 		}
 	}
 
@@ -56,7 +64,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	case DisplayXorg:
 		_, err := backendState.displays.GetXorgDisplay(newTask.Computed.DisplayName, scheduler)
 		if err != nil {
-			return false // TODO return proper error here, since now we have multiple different errors
+			return ScheduleResultInvalidDisplay
 		}
 	default:
 		panic("Not implemented")
@@ -67,7 +75,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	go ExecuteTask(newTask, backendState)
-	return true
+	return ScheduleResultSuccess
 }
 
 func (scheduler *Scheduler) KillProcessesByDisplay(displayType DisplayType, displayName string) {

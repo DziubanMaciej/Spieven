@@ -147,15 +147,21 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int, frien
 		return err
 	}
 
-	registered, err := common.DecodeRegisterResponsePacket(responsePacket)
+	response, err := common.DecodeRegisterResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}
 
-	if registered {
-		fmt.Println("Process registered")
-	} else {
-		fmt.Println("Process already running")
+	switch response.Status {
+	case common.RegisterResponseSuccess:
+		fmt.Println("Scheduled task")
+		fmt.Println("Log file: ", response.LogFile)
+	case common.RegisterResponseAlreadyRunning:
+		fmt.Println("Task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details.")
+	case common.RegisterResponseInvalidDisplay:
+		fmt.Println("Task is using invalid display")
+	default:
+		fmt.Println("Unknown scheduling error")
 	}
 
 	return nil

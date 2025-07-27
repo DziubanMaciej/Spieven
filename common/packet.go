@@ -110,11 +110,23 @@ func DecodeSummaryResponsePacket(packet Packet) (result SummaryResponseBody, err
 	return
 }
 
-func EncodeRegisterResponsePacket(value bool) (Packet, error) {
+const (
+	RegisterResponseSuccess byte = iota
+	RegisterResponseAlreadyRunning
+	RegisterResponseInvalidDisplay
+	RegisterResponseUnknown
+)
+
+type RegisterResponseBody struct {
+	Status  byte
+	LogFile string
+}
+
+func EncodeRegisterResponsePacket(value RegisterResponseBody) (Packet, error) {
 	return EncodePacket(PacketIdRegisterResponse, &value)
 }
 
-func DecodeRegisterResponsePacket(packet Packet) (result bool, err error) {
+func DecodeRegisterResponsePacket(packet Packet) (result RegisterResponseBody, err error) {
 	err = DecodePacket(packet, PacketIdRegisterResponse, &result)
 	return
 }
