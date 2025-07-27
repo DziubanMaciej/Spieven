@@ -33,6 +33,34 @@ func CmdSummary(backendConnection net.Conn) error {
 	return nil
 }
 
+func CmdLog(backendConnection net.Conn) error {
+	requestPacket, err := common.EncodeLogPacket()
+	if err != nil {
+		return err
+	}
+
+	err = common.SendPacket(backendConnection, requestPacket)
+	if err != nil {
+		return err
+	}
+
+	responsePacket, err := common.ReceivePacket(backendConnection)
+	if err != nil {
+		return err
+	}
+
+	response, err := common.DecodeLogResponsePacket(responsePacket)
+	if err != nil {
+		return err
+	}
+
+	for _, line := range response {
+		fmt.Println(line)
+	}
+
+	return nil
+}
+
 func CmdList(backendConnection net.Conn) error {
 	requestPacket, err := common.EncodeListPacket()
 	if err != nil {

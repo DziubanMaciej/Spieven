@@ -13,11 +13,13 @@ const (
 	PacketIdRegister
 	PacketIdSummary
 	PacketIdList
+	PacketIdLog
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
 	PacketIdRegisterResponse
 	PacketIdListResponse
+	PacketIdLogResponse
 )
 
 type Packet struct {
@@ -140,6 +142,25 @@ func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {
 }
 
 func DecodeListResponsePacket(packet Packet) (result ListResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdListResponse, &result)
+	err = DecodePacket(packet, PacketIdLogResponse, &result)
+	return
+}
+
+func EncodeLogPacket() (Packet, error) {
+	return EncodePacket(PacketIdLog, nil)
+}
+
+func DecodeLogPacket(packet Packet) error {
+	return DecodePacket(packet, PacketIdLog, nil)
+}
+
+type LogResponseBody []string
+
+func EncodeLogResponsePacket(body LogResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdLogResponse, body)
+}
+
+func DecodeLogResponsePacket(packet Packet) (result LogResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdLogResponse, &result)
 	return
 }

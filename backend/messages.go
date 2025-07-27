@@ -22,28 +22,22 @@ type BackendMessage struct {
 	// TODO add task and find some way to log nicely. Maybe allow setting "friendlyName" for each process?
 }
 
-func (msg *BackendMessage) String(includePrefixes bool) string {
+func (msg *BackendMessage) String() string {
 	result := msg.content
 
-	if includePrefixes {
-		var severity string
+	var severity string
 
-		switch msg.severity {
-		case BackendMessageInfo:
-			severity = " INFO"
-		case BackendMessageError:
-			severity = "ERROR"
-		default:
-			severity = "     " // Should not happen, but let's handle it gracefully
-		}
-
-		date := msg.date.Format("2006-01-02 15-04-05")
-		result = fmt.Sprintf("[%v][%v] %v\n", severity, date, result)
-	} else if msg.severity == BackendMessageError {
-		result = fmt.Sprintf("ERROR: %v\n", result)
-	} else {
-		result = result + "\n"
+	switch msg.severity {
+	case BackendMessageInfo:
+		severity = " INFO"
+	case BackendMessageError:
+		severity = "ERROR"
+	default:
+		severity = "     " // Should not happen, but let's handle it gracefully
 	}
+
+	date := msg.date.Format("2006-01-02 15-04-05")
+	result = fmt.Sprintf("[%v][%v] %v", severity, date, result)
 
 	return result
 }
@@ -72,7 +66,7 @@ func (messages *BackendMessages) Add(severity BackendMessageSeverity, content st
 		content:  content,
 	}
 
-	fmt.Print(msg.String(true))
+	fmt.Println(msg.String())
 
 	messages.lock.Lock()
 	messages.messages = append(messages.messages, msg)
@@ -93,7 +87,7 @@ func (messages *BackendMessages) Trim(maxAge time.Duration) {
 	var newBackendMessages []BackendMessage
 	for _, BackendMessage := range messages.messages {
 		deadline := BackendMessage.date.Add(maxAge)
-		if deadline.Before(now) {
+		if now.Before(deadline) {
 			newBackendMessages = append(newBackendMessages, BackendMessage)
 		}
 	}

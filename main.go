@@ -33,6 +33,20 @@ func main() {
 	}
 	noParamsCmd.AddCommand(summaryCmd)
 
+	logCmd := &cobra.Command{
+		Use:   "log",
+		Short: "Display a backend log",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			connection, err := frontend.ConnectToBackend()
+			if err == nil {
+				defer connection.Close()
+				err = frontend.CmdLog(connection)
+			}
+			return err
+		},
+	}
+	noParamsCmd.AddCommand(logCmd)
+
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "Display a list of running processes",

@@ -51,6 +51,15 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
+		case common.PacketIdLog:
+			err := common.DecodeLogPacket(packet)
+			if err != nil {
+				return
+			}
+			err = CmdLog(backendState, connection)
+			if err != nil {
+				return
+			}
 		case common.PacketIdList:
 			err := common.DecodeListPacket(packet)
 			if err != nil {

@@ -19,12 +19,29 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 	return common.SendPacket(frontendConnection, packet)
 }
 
+func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
+	messages := &backendState.messages
+
+	messages.lock.Lock()
+	response := make(common.LogResponseBody, len(messages.messages))
+	for i, message := range messages.messages {
+		response[i] = message.String()
+	}
+	messages.lock.Unlock()
+
+	packet, err := common.EncodeLogResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return common.SendPacket(frontendConnection, packet)
+}
+
 func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 	scheduler := &backendState.scheduler
 
-	response := make(common.ListResponseBody, len(scheduler.tasks))
-
 	scheduler.lock.Lock()
+	response := make(common.ListResponseBody, len(scheduler.tasks))
 	for i, task := range scheduler.tasks {
 		responseItem := &response[i]
 
