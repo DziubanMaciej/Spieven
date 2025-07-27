@@ -25,15 +25,12 @@ func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendM
 	var newTasks []*Task
 
 	for _, currTask := range scheduler.tasks {
-		currTask.Dynamic.Lock.Lock()
-
 		deadline := currTask.Dynamic.DeactivatedTime.Add(maxAge)
 		if currTask.Dynamic.IsDeactivated && deadline.Before(now) {
 			backendMessages.Add(BackendMessageInfo, currTask, "Trimmed task")
 		} else {
 			newTasks = append(newTasks, currTask)
 		}
-		currTask.Dynamic.Lock.Unlock()
 	}
 
 	scheduler.tasks = newTasks

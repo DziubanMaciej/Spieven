@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"supervisor/common"
-	"sync"
 	"time"
 )
 
@@ -38,7 +37,6 @@ type Task struct {
 	}
 
 	Dynamic struct {
-		Lock              sync.Mutex // TODO Remove this, lock the whole scheduler
 		IsDeactivated     bool
 		DeactivatedReason string
 		DeactivatedTime   time.Time
@@ -123,9 +121,7 @@ func (task *Task) CreateStopChannel() chan string {
 }
 
 func (task *Task) Deactivate(reason string) {
-	task.Dynamic.Lock.Lock()
 	task.Dynamic.IsDeactivated = true
 	task.Dynamic.DeactivatedReason = reason
 	task.Dynamic.DeactivatedTime = time.Now()
-	task.Dynamic.Lock.Unlock()
 }
