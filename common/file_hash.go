@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"hash/fnv"
 	"io"
 	"os"
@@ -9,7 +8,6 @@ import (
 
 func CalculateSpievenFileHash() (uint64, error) {
 	path := os.Args[0]
-	fmt.Println(path)
 	return CalculateFileHash(path)
 }
 
