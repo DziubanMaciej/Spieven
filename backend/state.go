@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"supervisor/common"
 	"time"
 )
 
@@ -12,6 +13,8 @@ type BackendState struct {
 	displays  Displays
 
 	handshakeValue uint64
+
+	_ common.NoCopy
 }
 
 func (state *BackendState) StartTrimGoroutine() chan struct{} {

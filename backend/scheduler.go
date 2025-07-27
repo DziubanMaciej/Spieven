@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"supervisor/common"
 	"sync"
 	"time"
 )
@@ -12,6 +13,8 @@ type Scheduler struct {
 	tasks     []*Task
 	currentId int
 	lock      sync.Mutex
+
+	_ common.NoCopy
 }
 
 func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendMessages) {

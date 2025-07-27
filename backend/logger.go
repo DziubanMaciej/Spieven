@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"supervisor/common"
 	"sync"
 )
 
@@ -40,6 +41,8 @@ type FileLogger struct {
 	errorChannel chan error
 	waitGroup    sync.WaitGroup
 	outFilePath  string
+
+	_ common.NoCopy
 }
 
 func CreateFileLogger(outFilePath string) FileLogger {

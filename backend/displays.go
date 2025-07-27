@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"supervisor/common"
 	"supervisor/watchxorg"
 	"sync"
 )
@@ -11,6 +12,8 @@ import (
 type Displays struct {
 	xorgDisplays []*XorgDisplay
 	lock         sync.Mutex
+
+	_ common.NoCopy
 }
 
 func (displays *Displays) GetXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
@@ -49,6 +52,8 @@ func (displays *Displays) Trim() {
 type XorgDisplay struct {
 	Name          string
 	IsDeactivated bool
+
+	_ common.NoCopy
 }
 
 func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*XorgDisplay, error) {

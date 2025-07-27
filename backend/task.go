@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"strconv"
 	"strings"
+	"supervisor/common"
 	"sync"
 	"time"
 )
@@ -39,6 +40,8 @@ type Task struct {
 		DeactivatedReason string
 		DeactivatedTime   time.Time
 	}
+
+	_ common.NoCopy
 }
 
 type DisplayType byte
