@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 	"os/exec"
 	"strconv"
@@ -30,6 +31,10 @@ type ProcessDescription struct {
 		Hash        int
 		DisplayType DisplayType
 		DisplayName string
+	}
+
+	Channels struct {
+		StopChannel chan string
 	}
 }
 
@@ -86,31 +91,48 @@ func (desc *ProcessDescription) ComputeDisplay() {
 	}
 }
 
+func (desc *ProcessDescription) InitChannels() {
+	desc.Channels.StopChannel = make(chan string, 1)
+}
+
 type RunningProcesses struct {
 	processes []ProcessDescription
 	currentId int
 	lock      sync.Mutex
 }
 
-func (processes *RunningProcesses) TryRegisterProcess(newDesc *ProcessDescription, backendMessages *BackendMessages) bool {
-	processes.lock.Lock()
-	defer processes.lock.Unlock()
+func TryRegisterProcess(newDesc *ProcessDescription, backendState *BackendState) bool {
+	backendState.processes.lock.Lock()
+	defer backendState.processes.lock.Unlock()
 
 	// Calculate process hash and skip registering if we already have it.
 	newDesc.ComputeHash()
 	newDesc.ComputeDisplay()
-	for _, currDesc := range processes.processes {
+	newDesc.InitChannels()
+	for _, currDesc := range backendState.processes.processes {
 		if currDesc.Computed.Hash == newDesc.Computed.Hash {
 			return false
 		}
 	}
 
-	// Assign unique ID to the process. Note it isn't part of the hash above.
-	newDesc.Computed.Id = processes.currentId
-	processes.currentId++
+	// Ensure display is correct
+	switch newDesc.Computed.DisplayType {
+	case DisplayNone:
+	case DisplayXorg:
+		_, err := backendState.displays.GetXorgDisplay(newDesc.Computed.DisplayName, &backendState.processes)
+		if err != nil {
+			return false // TODO return proper error here, since now we have multiple different errors
+		}
+	default:
+		panic("Not implemented")
+	}
 
-	processes.processes = append(processes.processes, *newDesc)
-	go HandleProcess(*newDesc, processes, backendMessages)
+	// Assign unique ID to the process. Note it isn't part of the hash above.
+	newDesc.Computed.Id = backendState.processes.currentId
+	backendState.processes.currentId++
+
+	backendState.processes.processes = append(backendState.processes.processes, *newDesc)
+	go HandleProcess(newDesc, &backendState.processes, &backendState.messages)
 	return true
 }
 
@@ -133,7 +155,18 @@ func (processes *RunningProcesses) TryUnregisterProcess(newDesc *ProcessDescript
 	return processesRemoved > 0 // TODO make some warning if it was greater than 1
 }
 
-func HandleProcess(processDescription ProcessDescription, processes *RunningProcesses, backendMessages *BackendMessages) {
+func (processes *RunningProcesses) KillProcessesByDisplay(displayType DisplayType, displayName string) {
+	processes.lock.Lock()
+	defer processes.lock.Unlock()
+
+	for _, currDesc := range processes.processes {
+		if currDesc.Computed.DisplayName == displayName && currDesc.Computed.DisplayType == displayType {
+			currDesc.Channels.StopChannel <- fmt.Sprintf("killing processes on display %v", displayName)
+		}
+	}
+}
+
+func HandleProcess(processDescription *ProcessDescription, processes *RunningProcesses, backendMessages *BackendMessages) {
 	// Initialize per-process logger
 	log := CreateFileLogger(processDescription.OutFilePath)
 	err := log.run()
@@ -210,8 +243,10 @@ MainLoop:
 			}
 		case <-log.errorChannel:
 			// Logger failed. We don't want to execute processes without logging. Kill the process and return error.
-			cmdCancel()
-			backendMessages.Add(BackendMessageError, "failed logging")
+			backendMessages.Add(BackendMessageError, "Failed logging")
+			break MainLoop
+		case reason := <-processDescription.Channels.StopChannel:
+			backendMessages.AddF(BackendMessageInfo, "Process killed (%v)", reason)
 			break MainLoop
 		}
 
@@ -222,7 +257,7 @@ MainLoop:
 		}
 	}
 
-	if processes.TryUnregisterProcess(&processDescription) {
+	if processes.TryUnregisterProcess(processDescription) {
 		backendMessages.Add(BackendMessageInfo, "Unregistered process")
 	}
 }

@@ -55,7 +55,7 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 		UserIndex:             request.UserIndex,
 	}
 
-	registered := backendState.processes.TryRegisterProcess(&process_description, &backendState.messages)
+	registered := TryRegisterProcess(&process_description, backendState)
 	if registered {
 		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
 	} else {

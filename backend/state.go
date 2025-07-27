@@ -5,4 +5,5 @@ package backend
 type BackendState struct {
 	messages  BackendMessages
 	processes RunningProcesses
+	displays  Displays
 }
