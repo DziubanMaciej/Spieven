@@ -8,22 +8,22 @@ import (
 )
 
 func CmdSummary(backendConnection net.Conn) error {
-	request_packet, err := common.EncodeSummaryPacket()
+	requestPacket, err := common.EncodeSummaryPacket()
 	if err != nil {
 		return err
 	}
 
-	err = common.SendPacket(backendConnection, request_packet)
+	err = common.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return err
 	}
 
-	response_packet, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := common.ReceivePacket(backendConnection)
 	if err != nil {
 		return err
 	}
 
-	summary, err := common.DecodeSummaryResponsePacket(response_packet)
+	summary, err := common.DecodeSummaryResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}
@@ -34,22 +34,22 @@ func CmdSummary(backendConnection net.Conn) error {
 }
 
 func CmdList(backendConnection net.Conn) error {
-	request_packet, err := common.EncodeListPacket()
+	requestPacket, err := common.EncodeListPacket()
 	if err != nil {
 		return err
 	}
 
-	err = common.SendPacket(backendConnection, request_packet)
+	err = common.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return err
 	}
 
-	response_packet, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := common.ReceivePacket(backendConnection)
 	if err != nil {
 		return err
 	}
 
-	response, err := common.DecodeListResponsePacket(response_packet)
+	response, err := common.DecodeListResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}
@@ -83,22 +83,22 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error
 		UserIndex: userIndex,
 	}
 
-	packet, err := common.EncodeRegisterPacket(body)
+	requestPacket, err := common.EncodeRegisterPacket(body)
 	if err != nil {
 		return err
 	}
 
-	err = common.SendPacket(backendConnection, packet)
+	err = common.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return err
 	}
 
-	response_packet, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := common.ReceivePacket(backendConnection)
 	if err != nil {
 		return err
 	}
 
-	registered, err := common.DecodeRegisterResponsePacket(response_packet)
+	registered, err := common.DecodeRegisterResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}

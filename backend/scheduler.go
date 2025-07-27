@@ -21,8 +21,8 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 
 	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
 	newTask.Init()
-	for _, currDesc := range scheduler.tasks {
-		if currDesc.Computed.Hash == newTask.Computed.Hash {
+	for _, currTask := range scheduler.tasks {
+		if currTask.Computed.Hash == newTask.Computed.Hash {
 			return false
 		}
 	}
@@ -71,9 +71,9 @@ func (scheduler *Scheduler) KillProcessesByDisplay(displayType DisplayType, disp
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
-	for _, currDesc := range scheduler.tasks {
-		if currDesc.Computed.DisplayName == displayName && currDesc.Computed.DisplayType == displayType {
-			currDesc.Channels.StopChannel <- fmt.Sprintf("killing processes on display %v", displayName)
+	for _, currTask := range scheduler.tasks {
+		if currTask.Computed.DisplayName == displayName && currTask.Computed.DisplayType == displayType {
+			currTask.Channels.StopChannel <- fmt.Sprintf("killing processes on display %v", displayName)
 		}
 	}
 }

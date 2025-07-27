@@ -28,25 +28,25 @@ type Packet struct {
 
 func EncodePacket(PacketId PacketId, data any) (Packet, error) {
 	var result Packet
-	var serialized_command []byte
+	var serializedData []byte
 	var err error
 
 	if data != nil {
-		serialized_command, err = json.Marshal(data)
+		serializedData, err = json.Marshal(data)
 		if err != nil {
 			return result, err
 		}
 	}
 
 	result.Id = PacketId
-	result.Data = []byte(serialized_command)
+	result.Data = serializedData
 	result.Length = uint32(len(result.Data))
 
 	return result, err
 }
 
-func DecodePacket(packet Packet, expected_command_id PacketId, data any) error {
-	if expected_command_id != packet.Id {
+func DecodePacket(packet Packet, expectedPacketId PacketId, data any) error {
+	if expectedPacketId != packet.Id {
 		return fmt.Errorf("invalid PacketId")
 	}
 
