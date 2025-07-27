@@ -136,7 +136,14 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		log(flags, content)
 	}
 
-	// TODO write LogTask with general info about the task
+	// Write LogTask with general info about the task
+	logF(LogTask, "Task information:")
+	logF(LogTask, "  Id: %v", task.Computed.Id)
+	logF(LogTask, "  FriendlyName: %v", task.FriendlyName)
+	logF(LogTask, "  UserIndex: %v", task.UserIndex)
+	logF(LogTask, "  Cmdline: %v", task.Cmdline)
+	logF(LogTask, "  Cwd: %v", task.Cwd)
+	logF(LogTask|LogFlagTaskSeparator, "  DisplayType=%v DisplayName=%v", task.Computed.DisplayType, task.Computed.DisplayName)
 
 	// Execute the main loop until the task becomes deactivated.
 	subsequentFailures := 0
