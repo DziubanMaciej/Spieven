@@ -21,11 +21,10 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 
 func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 	scheduler := &backendState.scheduler
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
 
 	response := make(common.ListResponseBody, len(scheduler.tasks))
 
+	scheduler.lock.Lock()
 	for i, task := range scheduler.tasks {
 		responseItem := &response[i]
 
@@ -35,7 +34,10 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 		responseItem.OutFilePath = task.OutFilePath
 		responseItem.MaxSubsequentFailures = task.MaxSubsequentFailures
 		responseItem.UserIndex = task.UserIndex
+		responseItem.IsDeactivated = task.Dynamic.IsDeactivated
+		responseItem.DeactivationReason = task.Dynamic.DeactivatedReason
 	}
+	scheduler.lock.Unlock()
 
 	packet, err := common.EncodeListResponsePacket(response)
 	if err != nil {

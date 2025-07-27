@@ -131,6 +131,8 @@ type ListResponseBody []struct {
 	OutFilePath           string
 	MaxSubsequentFailures int
 	UserIndex             int
+	IsDeactivated         bool
+	DeactivationReason    string
 }
 
 func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {

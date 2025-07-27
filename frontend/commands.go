@@ -60,6 +60,12 @@ func CmdList(backendConnection net.Conn) error {
 	}
 
 	for i, process := range response {
+		activeStr := "Yes"
+		if process.IsDeactivated {
+			activeStr = fmt.Sprintf("No (%v)", process.DeactivationReason)
+		}
+
+		fmt.Printf("Active:                %v\n", activeStr)
 		fmt.Printf("Id:                    %v\n", process.Id)
 		fmt.Printf("Cmdline:               %v\n", process.Cmdline)
 		fmt.Printf("Cwd:                   %v\n", process.Cwd)
