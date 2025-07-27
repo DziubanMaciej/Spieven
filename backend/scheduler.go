@@ -45,7 +45,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
 	newTask.Init()
 	for _, currTask := range scheduler.tasks {
-		if currTask.Computed.Hash == newTask.Computed.Hash {
+		if !currTask.Dynamic.IsDeactivated && currTask.Computed.Hash == newTask.Computed.Hash {
 			return false
 		}
 	}

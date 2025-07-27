@@ -34,7 +34,7 @@ type Task struct {
 	}
 
 	Dynamic struct {
-		Lock              sync.Mutex
+		Lock              sync.Mutex // TODO Remove this, lock the whole scheduler
 		IsDeactivated     bool
 		DeactivatedReason string
 		DeactivatedTime   time.Time

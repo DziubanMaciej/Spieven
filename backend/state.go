@@ -29,6 +29,7 @@ func (state *BackendState) StartTrimGoroutine() chan struct{} {
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
 				state.scheduler.Trim(maxTaskAge, &state.messages)
+				state.displays.Trim()
 			}
 		}
 	}()

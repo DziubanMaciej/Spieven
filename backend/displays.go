@@ -9,7 +9,7 @@ import (
 )
 
 type Displays struct {
-	xorgDisplays []XorgDisplay
+	xorgDisplays []*XorgDisplay
 	lock         sync.Mutex
 }
 
@@ -18,24 +18,40 @@ func (displays *Displays) GetXorgDisplay(name string, scheduler *Scheduler) (*Xo
 	defer displays.lock.Unlock()
 
 	for _, currDisplay := range displays.xorgDisplays {
-		if currDisplay.name == name {
-			return &currDisplay, nil
+		if !currDisplay.IsDeactivated && currDisplay.Name == name {
+			return currDisplay, nil
 		}
 	}
 
-	newDisplay, err := NewXorgDisplay(name, scheduler)
+	newDisplay, err := NewXorgDisplay(name, displays, scheduler)
 	if err == nil {
-		displays.xorgDisplays = append(displays.xorgDisplays, *newDisplay)
+		displays.xorgDisplays = append(displays.xorgDisplays, newDisplay)
 	}
 
 	return newDisplay, err
 }
 
-type XorgDisplay struct {
-	name string
+func (displays *Displays) Trim() {
+	displays.lock.Lock()
+	defer displays.lock.Unlock()
+
+	var newDisplays []*XorgDisplay
+
+	for _, currDisplay := range displays.xorgDisplays {
+		if !currDisplay.IsDeactivated {
+			newDisplays = append(newDisplays, currDisplay)
+		}
+	}
+
+	displays.xorgDisplays = newDisplays
 }
 
-func NewXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
+type XorgDisplay struct {
+	Name          string
+	IsDeactivated bool
+}
+
+func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := watchxorg.TryConnectXorg(name)
 	if dpy == nil {
@@ -51,15 +67,19 @@ func NewXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
 		return nil, fmt.Errorf("cannot start Spieven watchxorg")
 	}
 
+	result := XorgDisplay{
+		Name: name,
+	}
+
 	go func() {
 		cmd.Wait()
 
 		// Display is closed. Notify all the process handlers
+		displays.lock.Lock()
+		result.IsDeactivated = true
 		scheduler.KillProcessesByDisplay(DisplayXorg, name)
+		displays.lock.Unlock()
 	}()
 
-	result := XorgDisplay{
-		name: name,
-	}
 	return &result, nil
 }
