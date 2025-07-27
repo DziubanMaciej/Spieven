@@ -92,16 +92,21 @@ func main() {
 			if err != nil {
 				return err
 			}
+			friendlyName, err := cmd.Flags().GetString("friendlyName")
+			if err != nil {
+				return err
+			}
 
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = frontend.CmdRegister(connection, args, userIndex)
+				err = frontend.CmdRegister(connection, args, userIndex, friendlyName)
 			}
 			return err
 		},
 	}
 	registerCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different processes with the same settings. Does not serve any purpose other than to allow for duplicate processes running.")
+	registerCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 	noParamsCmd.AddCommand(registerCmd)
 
 	err := noParamsCmd.Execute()

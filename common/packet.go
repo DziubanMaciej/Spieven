@@ -72,10 +72,11 @@ func DecodeHandshakePacket(packet Packet) (result uint64, err error) {
 }
 
 type RegisterBody struct {
-	Cmdline   []string
-	Cwd       string
-	Env       []string
-	UserIndex int
+	Cmdline      []string
+	Cwd          string
+	Env          []string
+	UserIndex    int
+	FriendlyName string
 }
 
 func EncodeRegisterPacket(data RegisterBody) (Packet, error) {
@@ -135,6 +136,7 @@ type ListResponseBody []struct {
 	UserIndex             int
 	IsDeactivated         bool
 	DeactivationReason    string
+	FriendlyName          string
 }
 
 func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {

@@ -115,11 +115,7 @@ func (task *Task) ComputeDisplay() (DisplayType, string) {
 }
 
 func (task *Task) ComputeLogLabel(id int) string {
-	label := task.FriendlyName
-	if label == "" {
-		label = task.Cmdline[0]
-	}
-	return fmt.Sprintf("task id=%v, %v", id, label)
+	return fmt.Sprintf("task id=%v, %v", id, task.FriendlyName)
 }
 
 func (task *Task) CreateStopChannel() chan string {

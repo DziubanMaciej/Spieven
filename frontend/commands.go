@@ -93,13 +93,14 @@ func CmdList(backendConnection net.Conn) error {
 			activeStr = fmt.Sprintf("No (%v)", process.DeactivationReason)
 		}
 
-		fmt.Printf("Active:                %v\n", activeStr)
-		fmt.Printf("Id:                    %v\n", process.Id)
-		fmt.Printf("Cmdline:               %v\n", process.Cmdline)
-		fmt.Printf("Cwd:                   %v\n", process.Cwd)
-		fmt.Printf("OutFilePath:           %v\n", process.OutFilePath)
-		fmt.Printf("MaxSubsequentFailures: %v\n", process.MaxSubsequentFailures)
-		fmt.Printf("UserIndex:             %v\n", process.UserIndex)
+		fmt.Printf("Process %v\n", process.FriendlyName)
+		fmt.Printf("  Active:                %v\n", activeStr)
+		fmt.Printf("  Id:                    %v\n", process.Id)
+		fmt.Printf("  Cmdline:               %v\n", process.Cmdline)
+		fmt.Printf("  Cwd:                   %v\n", process.Cwd)
+		fmt.Printf("  OutFilePath:           %v\n", process.OutFilePath)
+		fmt.Printf("  MaxSubsequentFailures: %v\n", process.MaxSubsequentFailures)
+		fmt.Printf("  UserIndex:             %v\n", process.UserIndex)
 
 		if i < len(response)-1 {
 			fmt.Println()
@@ -109,7 +110,7 @@ func CmdList(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error {
+func CmdRegister(backendConnection net.Conn, args []string, userIndex int, friendlyName string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -119,11 +120,16 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error
 		}
 	}
 
+	if friendlyName == "" {
+		friendlyName = args[0]
+	}
+
 	body := common.RegisterBody{
-		Cmdline:   args,
-		Cwd:       cwd,
-		Env:       os.Environ(),
-		UserIndex: userIndex,
+		Cmdline:      args,
+		Cwd:          cwd,
+		Env:          os.Environ(),
+		UserIndex:    userIndex,
+		FriendlyName: friendlyName,
 	}
 
 	requestPacket, err := common.EncodeRegisterPacket(body)

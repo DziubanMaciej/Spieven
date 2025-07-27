@@ -53,6 +53,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 		responseItem.UserIndex = task.UserIndex
 		responseItem.IsDeactivated = task.Dynamic.IsDeactivated
 		responseItem.DeactivationReason = task.Dynamic.DeactivatedReason
+		responseItem.FriendlyName = task.FriendlyName
 	}
 	scheduler.lock.Unlock()
 
@@ -72,6 +73,7 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 		MaxSubsequentFailures: 3,
 		Env:                   request.Env,
 		UserIndex:             request.UserIndex,
+		FriendlyName:          request.FriendlyName,
 	}
 
 	registered := TryScheduleTask(&task, backendState)
