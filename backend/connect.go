@@ -30,7 +30,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	if common.HandshakeValidationEnabled {
 		err := ValidateHandshake(connection, backendState)
 		if err != nil {
-			backendState.messages.AddF(BackendMessageInfo, "Rejecting frontend request due to invalid handshake")
+			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid handshake")
 			return
 		}
 	}
@@ -79,7 +79,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		default:
-			backendState.messages.AddF(BackendMessageInfo, "Rejecting frontend request due to invalid packet")
+			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return
 		}
 

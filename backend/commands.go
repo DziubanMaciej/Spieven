@@ -76,9 +76,9 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 
 	registered := TryScheduleTask(&task, backendState)
 	if registered {
-		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
+		backendState.messages.Add(BackendMessageInfo, &task, "Registered process")
 	} else {
-		backendState.messages.Add(BackendMessageInfo, "Did not register process, because it's already running")
+		backendState.messages.Add(BackendMessageInfo, nil, "Did not register process, because it's already running")
 	}
 
 	packet, err := common.EncodeRegisterResponsePacket(registered)

@@ -142,7 +142,7 @@ func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {
 }
 
 func DecodeListResponsePacket(packet Packet) (result ListResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdLogResponse, &result)
+	err = DecodePacket(packet, PacketIdListResponse, &result)
 	return
 }
 

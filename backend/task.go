@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	"hash/fnv"
 	"strconv"
 	"strings"
@@ -22,12 +23,14 @@ type Task struct {
 	OutFilePath           string
 	MaxSubsequentFailures int
 	UserIndex             int
+	FriendlyName          string
 
 	Computed struct {
 		Id          int
 		Hash        int
 		DisplayType DisplayType
 		DisplayName string
+		LogLabel    string
 	}
 
 	Channels struct {
@@ -52,9 +55,12 @@ const (
 	DisplayWayland
 )
 
-func (task *Task) Init() {
-	task.Computed.DisplayType, task.Computed.DisplayName = task.ComputeDisplay()
+func (task *Task) Init(id int) {
+	task.Computed.Id = id
 	task.Computed.Hash = task.ComputeHash()
+	task.Computed.DisplayType, task.Computed.DisplayName = task.ComputeDisplay()
+	task.Computed.LogLabel = task.ComputeLogLabel(id)
+
 	task.Channels.StopChannel = task.CreateStopChannel()
 }
 
@@ -106,6 +112,14 @@ func (task *Task) ComputeDisplay() (DisplayType, string) {
 	} else {
 		return DisplayNone, ""
 	}
+}
+
+func (task *Task) ComputeLogLabel(id int) string {
+	label := task.FriendlyName
+	if label == "" {
+		label = task.Cmdline[0]
+	}
+	return fmt.Sprintf("task id=%v, %v", id, label)
 }
 
 func (task *Task) CreateStopChannel() chan string {

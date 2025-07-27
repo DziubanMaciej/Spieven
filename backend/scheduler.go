@@ -29,7 +29,7 @@ func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendM
 
 		deadline := currTask.Dynamic.DeactivatedTime.Add(maxAge)
 		if currTask.Dynamic.IsDeactivated && deadline.Before(now) {
-			backendMessages.Add(BackendMessageInfo, "Trimmed task")
+			backendMessages.Add(BackendMessageInfo, currTask, "Trimmed task")
 		} else {
 			newTasks = append(newTasks, currTask)
 		}
@@ -46,7 +46,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	defer scheduler.lock.Unlock()
 
 	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
-	newTask.Init()
+	newTask.Init(scheduler.currentId)
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated && currTask.Computed.Hash == newTask.Computed.Hash {
 			return false
@@ -65,8 +65,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 		panic("Not implemented")
 	}
 
-	// Assign unique ID to the process. Note it isn't part of the hash above.
-	newTask.Computed.Id = backendState.scheduler.currentId
+	// Increment id assigned for new tasks.
 	scheduler.currentId++
 
 	scheduler.tasks = append(scheduler.tasks, newTask)
@@ -90,7 +89,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	perTaskLogger := CreateFileLogger(task.OutFilePath)
 	err := perTaskLogger.run()
 	if err != nil {
-		backendState.messages.Add(BackendMessageError, "failed to create per-process logger")
+		backendState.messages.Add(BackendMessageError, task, "failed to create per-process logger")
 		return
 	}
 	defer perTaskLogger.stop()
@@ -128,7 +127,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			if hasFlag(LogFlagErr) {
 				severity = BackendMessageError
 			}
-			backendState.messages.Add(severity, content)
+			backendState.messages.Add(severity, task, content)
 		}
 		if hasFlag(LogDeactivation | LogBackend | LogTask) {
 			perTaskLogger.channel <- diagnosticMessage(content, hasFlag(LogFlagTaskSeparator))

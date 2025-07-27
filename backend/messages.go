@@ -19,7 +19,7 @@ type BackendMessage struct {
 	date     time.Time
 	severity BackendMessageSeverity
 	content  string
-	// TODO add task and find some way to log nicely. Maybe allow setting "friendlyName" for each process?
+	task     *Task
 }
 
 func (msg *BackendMessage) String() string {
@@ -37,7 +37,11 @@ func (msg *BackendMessage) String() string {
 	}
 
 	date := msg.date.Format("2006-01-02 15-04-05")
-	result = fmt.Sprintf("[%v][%v] %v", severity, date, result)
+	taskLabel := ""
+	if msg.task != nil {
+		taskLabel = fmt.Sprintf(" (%s)", msg.task.Computed.LogLabel)
+	}
+	result = fmt.Sprintf("[%v][%v] %v%v", severity, date, result, taskLabel)
 
 	return result
 }
@@ -59,11 +63,12 @@ func (messages *BackendMessages) String() string {
 	return result
 }
 
-func (messages *BackendMessages) Add(severity BackendMessageSeverity, content string) {
+func (messages *BackendMessages) Add(severity BackendMessageSeverity, task *Task, content string) {
 	msg := BackendMessage{
 		date:     time.Now(),
 		severity: severity,
 		content:  content,
+		task:     task,
 	}
 
 	fmt.Println(msg.String())
@@ -73,9 +78,9 @@ func (messages *BackendMessages) Add(severity BackendMessageSeverity, content st
 	messages.lock.Unlock()
 }
 
-func (messages *BackendMessages) AddF(severity BackendMessageSeverity, format string, args ...any) {
+func (messages *BackendMessages) AddF(severity BackendMessageSeverity, task *Task, format string, args ...any) {
 	content := fmt.Sprintf(format, args...)
-	messages.Add(severity, content)
+	messages.Add(severity, task, content)
 }
 
 func (messages *BackendMessages) Trim(maxAge time.Duration) {
