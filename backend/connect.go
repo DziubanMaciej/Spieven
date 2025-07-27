@@ -78,6 +78,15 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
+		case common.PacketIdNotifyTaskEnd:
+			taskId, err := common.DecodeNotifyTaskEndPacket(packet)
+			if err != nil {
+				return
+			}
+			err = CmdNotifyTaskEnd(backendState, connection, taskId)
+			if err != nil {
+				return
+			}
 		default:
 			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return

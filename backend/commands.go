@@ -3,6 +3,7 @@ package backend
 import (
 	"net"
 	"supervisor/common"
+	"time"
 )
 
 func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
@@ -70,35 +71,78 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
-		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
+		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt", // TODO define some directory for logs and generate proper paths
 		MaxSubsequentFailures: 3,
 		Env:                   request.Env,
 		UserIndex:             request.UserIndex,
 		FriendlyName:          request.FriendlyName,
 	}
 
-	response := common.RegisterResponseBody{
-		Status:  common.RegisterResponseAlreadyRunning,
-		LogFile: task.OutFilePath,
-	}
-
+	var responseStatus byte
 	switch TryScheduleTask(&task, backendState) {
 	case ScheduleResultSuccess:
 		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
-		response.Status = common.RegisterResponseSuccess
+		responseStatus = common.RegisterResponseSuccess
 	case ScheduleResultAlreadyRunning:
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
-		response.Status = common.RegisterResponseAlreadyRunning
+		responseStatus = common.RegisterResponseAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		response.Status = common.RegisterResponseAlreadyRunning
+		responseStatus = common.RegisterResponseAlreadyRunning
 	default:
 		// Shouldn't happen, but let's handle it gracefully
 		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
-		response.Status = common.RegisterResponseUnknown
+		responseStatus = common.RegisterResponseUnknown
+	}
+
+	response := common.RegisterResponseBody{
+		Id:      task.Computed.Id,
+		Status:  responseStatus,
+		LogFile: task.OutFilePath,
 	}
 
 	packet, err := common.EncodeRegisterResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return common.SendPacket(frontendConnection, packet)
+}
+
+func CmdNotifyTaskEnd(backendState *BackendState, frontendConnection net.Conn, taskId int) error {
+	scheduler := &backendState.scheduler
+
+	var response common.NotifyTaskEndResponseBody
+	var reponseSet bool
+
+	for !reponseSet {
+		// TODO ensure this loop exits when frontend exits early
+
+		scheduler.lock.Lock()
+
+		if taskId > scheduler.currentId {
+			response = common.NotifyTaskEndResponseInvalidTask
+			reponseSet = true
+		}
+
+		stillRunning := false
+		for _, task := range scheduler.tasks {
+			if task.Computed.Id == taskId && !task.Dynamic.IsDeactivated {
+				stillRunning = true
+			}
+		}
+
+		if !stillRunning {
+			response = common.NotifyTaskEndResponseEnded
+			reponseSet = true
+		}
+
+		scheduler.lock.Unlock()
+
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	packet, err := common.EncodeNotifyTaskEndResponsePacket(response)
 	if err != nil {
 		return err
 	}

@@ -14,12 +14,14 @@ const (
 	PacketIdSummary
 	PacketIdList
 	PacketIdLog
+	PacketIdNotifyTaskEnd
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
 	PacketIdRegisterResponse
 	PacketIdListResponse
 	PacketIdLogResponse
+	PacketIdNotifyTaskEndResponse
 )
 
 type Packet struct {
@@ -119,6 +121,7 @@ const (
 
 type RegisterResponseBody struct {
 	Status  byte
+	Id      int
 	LogFile string
 }
 
@@ -176,5 +179,30 @@ func EncodeLogResponsePacket(body LogResponseBody) (Packet, error) {
 
 func DecodeLogResponsePacket(packet Packet) (result LogResponseBody, err error) {
 	err = DecodePacket(packet, PacketIdLogResponse, &result)
+	return
+}
+
+func EncodeNotifyTaskEndPacket(body int) (Packet, error) {
+	return EncodePacket(PacketIdNotifyTaskEnd, body)
+}
+
+func DecodeNotifyTaskEndPacket(packet Packet) (result int, err error) {
+	err = DecodePacket(packet, PacketIdNotifyTaskEnd, &result)
+	return
+}
+
+type NotifyTaskEndResponseBody byte
+
+const (
+	NotifyTaskEndResponseEnded NotifyTaskEndResponseBody = iota
+	NotifyTaskEndResponseInvalidTask
+)
+
+func EncodeNotifyTaskEndResponsePacket(body NotifyTaskEndResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdNotifyTaskEndResponse, body)
+}
+
+func DecodeNotifyTaskEndResponsePacket(packet Packet) (result NotifyTaskEndResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdNotifyTaskEndResponse, &result)
 	return
 }

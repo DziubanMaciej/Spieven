@@ -96,18 +96,35 @@ func main() {
 			if err != nil {
 				return err
 			}
+			watch, err := cmd.Flags().GetBool("watch")
+			if err != nil {
+				return err
+			}
 
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = frontend.CmdRegister(connection, args, userIndex, friendlyName)
+				response, err := frontend.CmdRegister(connection, args, userIndex, friendlyName)
+				if err != nil {
+					return err
+				}
+
+				if watch {
+					err := frontend.CmdWatchTaskLog(connection, response.Id, response.LogFile)
+					if err != nil {
+						return err
+					}
+				}
 			}
-			return err
+			return nil
 		},
 	}
 	registerCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different processes with the same settings. Does not serve any purpose other than to allow for duplicate processes running.")
 	registerCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
+	registerCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 	noParamsCmd.AddCommand(registerCmd)
+
+	// TODO add "watchLog" command. For that we'll need a way to query logFile by taskId. This can get tricky if the task is no longer running.
 
 	err := noParamsCmd.Execute()
 	if err != nil {
