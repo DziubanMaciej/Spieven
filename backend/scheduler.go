@@ -5,12 +5,35 @@ import (
 	"fmt"
 	"os/exec"
 	"sync"
+	"time"
 )
 
 type Scheduler struct {
 	tasks     []*Task
 	currentId int
 	lock      sync.Mutex
+}
+
+func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendMessages) {
+	scheduler.lock.Lock()
+	defer scheduler.lock.Unlock()
+
+	now := time.Now()
+	var newTasks []*Task
+
+	for _, currTask := range scheduler.tasks {
+		currTask.Dynamic.Lock.Lock()
+
+		deadline := currTask.Dynamic.DeactivatedTime.Add(maxAge)
+		if currTask.Dynamic.IsDeactivated && deadline.Before(now) {
+			backendMessages.Add(BackendMessageInfo, "Trimmed task")
+		} else {
+			newTasks = append(newTasks, currTask)
+		}
+		currTask.Dynamic.Lock.Unlock()
+	}
+
+	scheduler.tasks = newTasks
 }
 
 func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
@@ -46,25 +69,6 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	go ExecuteTask(newTask, backendState)
 	return true
-}
-
-func TryUnscheduleTask(taskToRemove *Task, backendState *BackendState) bool {
-	backendState.scheduler.lock.Lock()
-	defer backendState.scheduler.lock.Unlock()
-
-	var newTasks []*Task
-	var numRemoved int
-
-	for _, currTask := range backendState.scheduler.tasks {
-		if currTask.Computed.Hash == taskToRemove.Computed.Hash {
-			numRemoved++
-		} else {
-			newTasks = append(newTasks, currTask)
-		}
-	}
-
-	backendState.scheduler.tasks = newTasks
-	return numRemoved > 0 // TODO make some warning if it was greater than 1
 }
 
 func (scheduler *Scheduler) KillProcessesByDisplay(displayType DisplayType, displayName string) {
@@ -110,8 +114,11 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			return (flags & f) != 0
 		}
 
-		if hasFlag(LogDeactivation | LogBackend | LogTask) {
-			perTaskLogger.channel <- diagnosticMessage(content, hasFlag(LogFlagTaskSeparator))
+		if hasFlag(LogDeactivation) {
+			content += " Deactivating."
+
+			isTaskDeactivated = true
+			task.Deactivate(content)
 		}
 		if hasFlag(LogDeactivation | LogBackend) {
 			severity := BackendMessageInfo
@@ -120,10 +127,10 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			}
 			backendState.messages.Add(severity, content)
 		}
-		if hasFlag(LogDeactivation) {
-			isTaskDeactivated = true
-			task.Deactivate(content)
+		if hasFlag(LogDeactivation | LogBackend | LogTask) {
+			perTaskLogger.channel <- diagnosticMessage(content, hasFlag(LogFlagTaskSeparator))
 		}
+
 	}
 	logF := func(flags LogFlag, format string, args ...any) {
 		content := fmt.Sprintf(format, args...)
@@ -143,22 +150,22 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		cmd.Env = task.Env
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
-			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe")
+			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe.")
 			break
 		}
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			log(LogDeactivation|LogFlagErr, "Failed to create stderr pipe")
+			log(LogDeactivation|LogFlagErr, "Failed to create stderr pipe.")
 			break
 		}
 
 		// Start the process
 		err = cmd.Start()
 		if err != nil {
-			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe")
+			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe.")
 			break
 		}
-		log(LogTask, "Process started")
+		log(LogTask, "Process started.")
 
 		// Run pipe reading goroutines
 		var pipeWaitGroup sync.WaitGroup
@@ -191,7 +198,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		select {
 		case exitCode := <-processResultChannel:
 			// Process ended.
-			logF(LogTask|LogFlagTaskSeparator, "Process ended with code %v", exitCode)
+			logF(LogTask|LogFlagTaskSeparator, "Process ended with code %v.", exitCode)
 			if exitCode == 0 {
 				subsequentFailures = 0
 			} else {
@@ -199,14 +206,14 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			}
 		case <-perTaskLogger.errorChannel:
 			// Logger failed. We don't want to execute processes without logging. Kill the process and return error.
-			log(LogDeactivation|LogFlagErr, "Failed logging")
+			log(LogDeactivation|LogFlagErr, "Failed logging.")
 		case reason := <-task.Channels.StopChannel:
-			logF(LogDeactivation, "Process killed (%v)", reason)
+			logF(LogDeactivation, "Process killed (%v).", reason)
 		}
 
 		// Handle breaks from the main loop
 		if task.MaxSubsequentFailures >= 0 && subsequentFailures >= task.MaxSubsequentFailures {
-			logF(LogDeactivation, "Task reached subsequent failure count limit of %v", task.MaxSubsequentFailures)
+			logF(LogDeactivation, "Task reached subsequent failure count limit of %v.", task.MaxSubsequentFailures)
 			break
 		}
 	}

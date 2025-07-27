@@ -87,6 +87,9 @@ func RunServer() error {
 	}
 	backendState.handshakeValue = handshakeValue
 
+	// Run trimming goroutine which will regularly clean resources.
+	backendState.StartTrimGoroutine()
+
 	// Create socket
 	listener, err := net.Listen("tcp4", common.HostWithPort)
 	if err != nil {

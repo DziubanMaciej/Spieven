@@ -92,8 +92,8 @@ func (messages *BackendMessages) Trim(maxAge time.Duration) {
 
 	var newBackendMessages []BackendMessage
 	for _, BackendMessage := range messages.messages {
-		age := now.Sub(BackendMessage.date)
-		if age < maxAge {
+		deadline := BackendMessage.date.Add(maxAge)
+		if deadline.Before(now) {
 			newBackendMessages = append(newBackendMessages, BackendMessage)
 		}
 	}
