@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"supervisor/common"
-	"supervisor/watchxorg"
+
 	"sync"
 )
 
@@ -58,11 +58,11 @@ type XorgDisplay struct {
 
 func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
-	dpy := watchxorg.TryConnectXorg(name)
+	dpy := common.TryConnectXorg(name)
 	if dpy == nil {
 		return nil, fmt.Errorf("cannot connect to xorg")
 	}
-	watchxorg.DisconnectXorg(dpy)
+	common.DisconnectXorg(dpy)
 
 	// Run watchxorg. If this command ends, it will mean XServer has stopped working.
 	spievenBinary := os.Args[0]

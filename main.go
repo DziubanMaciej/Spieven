@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"supervisor/backend"
+	"supervisor/common"
 	"supervisor/frontend"
-	"supervisor/watchxorg"
 
 	"github.com/spf13/cobra"
 )
@@ -69,14 +69,14 @@ func main() {
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dpyName := args[0]
-			dpy := watchxorg.TryConnectXorg(dpyName)
+			dpy := common.TryConnectXorg(dpyName)
 			if dpy == nil {
 				return fmt.Errorf("could not connect to xorg %v", dpyName)
 			}
 
 			fmt.Printf("Connected to xorg %v\n", dpyName)
-			watchxorg.WatchXorgActive(dpy)
-			watchxorg.DisconnectXorg(dpy)
+			common.WatchXorgActive(dpy)
+			common.DisconnectXorg(dpy)
 			fmt.Printf("Disconnected from xorg %v\n", dpyName)
 			return nil
 		},

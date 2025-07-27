@@ -1,4 +1,4 @@
-package watchxorg
+package common
 
 /*
 #cgo LDFLAGS: -lxcb -lxcb-util
