@@ -13,7 +13,7 @@ type Displays struct {
 	lock         sync.Mutex
 }
 
-func (displays *Displays) GetXorgDisplay(name string, processes *RunningProcesses) (*XorgDisplay, error) {
+func (displays *Displays) GetXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
 	displays.lock.Lock()
 	defer displays.lock.Unlock()
 
@@ -23,7 +23,7 @@ func (displays *Displays) GetXorgDisplay(name string, processes *RunningProcesse
 		}
 	}
 
-	newDisplay, err := NewXorgDisplay(name, processes)
+	newDisplay, err := NewXorgDisplay(name, scheduler)
 	if err == nil {
 		displays.xorgDisplays = append(displays.xorgDisplays, *newDisplay)
 	}
@@ -35,7 +35,7 @@ type XorgDisplay struct {
 	name string
 }
 
-func NewXorgDisplay(name string, processes *RunningProcesses) (*XorgDisplay, error) {
+func NewXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := watchxorg.TryConnectXorg(name)
 	if dpy == nil {
@@ -55,7 +55,7 @@ func NewXorgDisplay(name string, processes *RunningProcesses) (*XorgDisplay, err
 		cmd.Wait()
 
 		// Display is closed. Notify all the process handlers
-		processes.KillProcessesByDisplay(DisplayXorg, name)
+		scheduler.KillProcessesByDisplay(DisplayXorg, name)
 	}()
 
 	result := XorgDisplay{

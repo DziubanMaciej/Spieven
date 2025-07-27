@@ -76,8 +76,8 @@ type RegisterBody struct {
 	UserIndex int
 }
 
-func EncodeRegisterPacket(processDescription RegisterBody) (Packet, error) {
-	return EncodePacket(PacketIdRegister, processDescription)
+func EncodeRegisterPacket(data RegisterBody) (Packet, error) {
+	return EncodePacket(PacketIdRegister, data)
 }
 
 func DecodeRegisterPacket(packet Packet) (result RegisterBody, err error) {

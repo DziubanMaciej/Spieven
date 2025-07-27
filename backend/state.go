@@ -4,6 +4,6 @@ package backend
 // handlers. It consists of structs containing synchronized methods, to allow access from different goroutines.
 type BackendState struct {
 	messages  BackendMessages
-	processes RunningProcesses
+	scheduler Scheduler
 	displays  Displays
 }

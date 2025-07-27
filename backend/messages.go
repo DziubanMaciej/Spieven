@@ -19,7 +19,7 @@ type BackendMessage struct {
 	date     time.Time
 	severity BackendMessageSeverity
 	content  string
-	// TODO add process description and find some way to log nicely. Maybe allow setting "friendlyName" for each process?
+	// TODO add task and find some way to log nicely. Maybe allow setting "friendlyName" for each process?
 }
 
 func (msg *BackendMessage) String(includePrefixes bool) string {

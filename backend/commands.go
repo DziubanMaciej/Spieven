@@ -20,21 +20,21 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 }
 
 func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
-	processes := &backendState.processes
-	processes.lock.Lock()
-	defer processes.lock.Unlock()
+	scheduler := &backendState.scheduler
+	scheduler.lock.Lock()
+	defer scheduler.lock.Unlock()
 
-	response := make(common.ListResponseBody, len(processes.processes))
+	response := make(common.ListResponseBody, len(scheduler.tasks))
 
-	for i, processDescription := range processes.processes {
+	for i, task := range scheduler.tasks {
 		responseItem := &response[i]
 
-		responseItem.Id = processDescription.Computed.Id
-		responseItem.Cmdline = processDescription.Cmdline
-		responseItem.Cwd = processDescription.Cwd
-		responseItem.OutFilePath = processDescription.OutFilePath
-		responseItem.MaxSubsequentFailures = processDescription.MaxSubsequentFailures
-		responseItem.UserIndex = processDescription.UserIndex
+		responseItem.Id = task.Computed.Id
+		responseItem.Cmdline = task.Cmdline
+		responseItem.Cwd = task.Cwd
+		responseItem.OutFilePath = task.OutFilePath
+		responseItem.MaxSubsequentFailures = task.MaxSubsequentFailures
+		responseItem.UserIndex = task.UserIndex
 	}
 
 	packet, err := common.EncodeListResponsePacket(response)
@@ -46,7 +46,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 }
 
 func CmdRegister(backendState *BackendState, frontendConnection net.Conn, request common.RegisterBody) error {
-	process_description := ProcessDescription{
+	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd, // TODO compute this if empty
 		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
@@ -55,7 +55,7 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 		UserIndex:             request.UserIndex,
 	}
 
-	registered := TryRegisterProcess(&process_description, backendState)
+	registered := TryScheduleTask(&task, backendState)
 	if registered {
 		backendState.messages.AddF(BackendMessageInfo, "Registered process %v", request.Cmdline)
 	} else {

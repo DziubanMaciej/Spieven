@@ -57,11 +57,11 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		case common.PacketIdRegister:
-			process_description, err := common.DecodeRegisterPacket(packet)
+			task, err := common.DecodeRegisterPacket(packet)
 			if err != nil {
 				return
 			}
-			err = CmdRegister(backendState, connection, process_description)
+			err = CmdRegister(backendState, connection, task)
 			if err != nil {
 				return
 			}
