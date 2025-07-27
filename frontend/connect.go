@@ -16,16 +16,23 @@ func ConnectToBackend() (net.Conn, error) {
 		return nil, err
 	}
 
-	packet, err := common.EncodeHandshakePacket(123)
-	if err != nil {
-		connection.Close()
-		return nil, err
-	}
+	if common.HandshakeValidationEnabled {
+		handshakeValue, err := common.CalculateSpievenFileHash()
+		if err != nil {
+			return nil, err
+		}
 
-	err = common.SendPacket(connection, packet)
-	if err != nil {
-		connection.Close()
-		return nil, err
+		packet, err := common.EncodeHandshakePacket(handshakeValue)
+		if err != nil {
+			connection.Close()
+			return nil, err
+		}
+
+		err = common.SendPacket(connection, packet)
+		if err != nil {
+			connection.Close()
+			return nil, err
+		}
 	}
 
 	return connection, nil

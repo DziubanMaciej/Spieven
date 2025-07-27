@@ -6,4 +6,6 @@ type BackendState struct {
 	messages  BackendMessages
 	scheduler Scheduler
 	displays  Displays
+
+	handshakeValue uint64
 }

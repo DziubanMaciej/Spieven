@@ -6,19 +6,19 @@ import (
 	"supervisor/common"
 )
 
-func ValidateHandshake(connection net.Conn) error {
+func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
 	packet, err := common.ReceivePacket(connection)
 	if err != nil {
 		return err
 	}
 
-	handshake_value, err := common.DecodeHandshakePacket(packet)
+	handshakeValue, err := common.DecodeHandshakePacket(packet)
 	if err != nil {
 		return err
 	}
 
-	if handshake_value != 123 {
-		return fmt.Errorf("invalid handshake value")
+	if backendState.handshakeValue == handshakeValue {
+		return fmt.Errorf("invalid handshake value: expected %v, got %v", backendState.handshakeValue, handshakeValue)
 	}
 
 	return nil
@@ -27,8 +27,12 @@ func ValidateHandshake(connection net.Conn) error {
 func HandleConnection(backendState *BackendState, connection net.Conn) {
 	defer connection.Close()
 
-	if err := ValidateHandshake(connection); err != nil {
-		return
+	if common.HandshakeValidationEnabled {
+		err := ValidateHandshake(connection, backendState)
+		if err != nil {
+			backendState.messages.AddF(BackendMessageInfo, "Rejecting frontend request due to invalid handshake")
+			return
+		}
 	}
 
 	for {
@@ -66,6 +70,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		default:
+			backendState.messages.AddF(BackendMessageInfo, "Rejecting frontend request due to invalid packet")
 			return
 		}
 
@@ -74,6 +79,13 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 
 func RunServer() error {
 	var backendState BackendState
+
+	// Calculate hash used for verifying frontend requests
+	handshakeValue, err := common.CalculateSpievenFileHash()
+	if err != nil {
+		return nil
+	}
+	backendState.handshakeValue = handshakeValue
 
 	// Create socket
 	listener, err := net.Listen("tcp4", common.HostWithPort)
