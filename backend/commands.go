@@ -48,7 +48,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 func CmdRegister(backendState *BackendState, frontendConnection net.Conn, request common.RegisterBody) error {
 	task := Task{
 		Cmdline:               request.Cmdline,
-		Cwd:                   request.Cwd, // TODO compute this if empty
+		Cwd:                   request.Cwd,
 		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt",
 		MaxSubsequentFailures: 3,
 		Env:                   request.Env,

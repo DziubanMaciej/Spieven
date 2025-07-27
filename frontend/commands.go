@@ -76,9 +76,18 @@ func CmdList(backendConnection net.Conn) error {
 }
 
 func CmdRegister(backendConnection net.Conn, args []string, userIndex int) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		var found bool
+		cwd, found = os.LookupEnv("HOME")
+		if !found {
+			return fmt.Errorf("could not determine working directory for the task")
+		}
+	}
+
 	body := common.RegisterBody{
 		Cmdline:   args,
-		Cwd:       "",
+		Cwd:       cwd,
 		Env:       os.Environ(),
 		UserIndex: userIndex,
 	}
