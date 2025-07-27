@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 )
 
 type LogMessage struct {
 	msg          string
 	isDiagnostic bool
+	isSeparator  bool
 	isStop       bool
 }
 
-func diagnosticMessageF(format string, a ...any) LogMessage {
+func diagnosticMessage(content string, isSeparator bool) LogMessage {
 	return LogMessage{
-		msg:          fmt.Sprintf(format, a...),
+		msg:          content,
 		isDiagnostic: true,
+		isSeparator:  isSeparator,
 	}
 }
 
@@ -31,12 +32,6 @@ func stopMessage() LogMessage {
 func stdoutMessage(message string) LogMessage {
 	return LogMessage{
 		msg: fmt.Sprintf("%v\n", message),
-	}
-}
-
-func emptyLinesMessage(lines int) LogMessage {
-	return LogMessage{
-		msg: strings.Repeat("\n", lines),
 	}
 }
 
@@ -81,6 +76,9 @@ func (log *FileLogger) run() error {
 			chunk := message.msg
 			if message.isDiagnostic {
 				chunk = fmt.Sprintf("--------------------- %v ---------------------\n", chunk)
+			}
+			if message.isSeparator {
+				chunk += "\n\n\n"
 			}
 
 			// Write the message

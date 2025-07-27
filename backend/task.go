@@ -4,6 +4,8 @@ import (
 	"hash/fnv"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Task struct describes a process that is scheduled to be running in background. For each Task Spieven creates a
@@ -29,6 +31,13 @@ type Task struct {
 
 	Channels struct {
 		StopChannel chan string
+	}
+
+	Dynamic struct {
+		Lock              sync.Mutex
+		IsDeactivated     bool
+		DeactivatedReason string
+		DeactivatedTime   time.Time
 	}
 }
 
@@ -98,4 +107,12 @@ func (task *Task) ComputeDisplay() (DisplayType, string) {
 
 func (task *Task) CreateStopChannel() chan string {
 	return make(chan string, 1)
+}
+
+func (task *Task) Deactivate(reason string) {
+	task.Dynamic.Lock.Lock()
+	task.Dynamic.IsDeactivated = true
+	task.Dynamic.DeactivatedReason = reason
+	task.Dynamic.DeactivatedTime = time.Now()
+	task.Dynamic.Lock.Unlock()
 }

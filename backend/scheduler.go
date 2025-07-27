@@ -8,7 +8,7 @@ import (
 )
 
 type Scheduler struct {
-	tasks     []Task
+	tasks     []*Task
 	currentId int
 	lock      sync.Mutex
 }
@@ -43,7 +43,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) bool {
 	newTask.Computed.Id = backendState.scheduler.currentId
 	scheduler.currentId++
 
-	scheduler.tasks = append(scheduler.tasks, *newTask)
+	scheduler.tasks = append(scheduler.tasks, newTask)
 	go ExecuteTask(newTask, backendState)
 	return true
 }
@@ -52,7 +52,7 @@ func TryUnscheduleTask(taskToRemove *Task, backendState *BackendState) bool {
 	backendState.scheduler.lock.Lock()
 	defer backendState.scheduler.lock.Unlock()
 
-	var newTasks []Task
+	var newTasks []*Task
 	var numRemoved int
 
 	for _, currTask := range backendState.scheduler.tasks {
@@ -79,20 +79,62 @@ func (scheduler *Scheduler) KillProcessesByDisplay(displayType DisplayType, disp
 }
 
 func ExecuteTask(task *Task, backendState *BackendState) {
-	backendMessages := &backendState.messages
-
-	// Initialize per-process logger
-	log := CreateFileLogger(task.OutFilePath)
-	err := log.run()
+	// Initialize per-task logger
+	perTaskLogger := CreateFileLogger(task.OutFilePath)
+	err := perTaskLogger.run()
 	if err != nil {
-		backendMessages.Add(BackendMessageError, "failed to create per-process logger")
+		backendState.messages.Add(BackendMessageError, "failed to create per-process logger")
 		return
 	}
-	defer log.stop()
+	defer perTaskLogger.stop()
 
+	// Logging in this function is a bit complicated. We have 3 possible places where logs can go:
+	//  1. FileLogger - per-task file with detailed info about the current task as well as stdout/stderr. All messages
+	//    will go there.
+	//  2. BackendMessages - messages global for the entire Spieven backend. This is more corse-grained. Only some
+	//    message will go there, not to bloat the log.
+	//  3. Deactivation reason - when this task becomes deactivate, we'll store a reason why. This will be saved within
+	//    the task struct and frontend will be able to retrieve it. Only one log can be used as a deactivation reason.
+	// In order to simplify handling all possible behaviors, use the wrapper functions below.
+	type LogFlag uint
+	const (
+		LogTask                      = 1
+		LogBackend                   = 2
+		LogDeactivation              = 4
+		LogFlagErr           LogFlag = 8
+		LogFlagTaskSeparator         = 16
+	)
+	isTaskDeactivated := false
+	log := func(flags LogFlag, content string) {
+		hasFlag := func(f LogFlag) bool {
+			return (flags & f) != 0
+		}
+
+		if hasFlag(LogDeactivation | LogBackend | LogTask) {
+			perTaskLogger.channel <- diagnosticMessage(content, hasFlag(LogFlagTaskSeparator))
+		}
+		if hasFlag(LogDeactivation | LogBackend) {
+			severity := BackendMessageInfo
+			if hasFlag(LogFlagErr) {
+				severity = BackendMessageError
+			}
+			backendState.messages.Add(severity, content)
+		}
+		if hasFlag(LogDeactivation) {
+			isTaskDeactivated = true
+			task.Deactivate(content)
+		}
+	}
+	logF := func(flags LogFlag, format string, args ...any) {
+		content := fmt.Sprintf(format, args...)
+		log(flags, content)
+	}
+
+	// TODO write LogTask with general info about the task
+
+	// Execute the main loop until the task becomes deactivated.
 	subsequentFailures := 0
-MainLoop:
-	for {
+	for !isTaskDeactivated {
 		// Initialize the process struct
 		cmdContext, cmdCancel := context.WithCancel(context.Background())
 		defer cmdCancel()
@@ -101,36 +143,37 @@ MainLoop:
 		cmd.Env = task.Env
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
-			backendMessages.Add(BackendMessageError, "failed to create stdout pipe")
+			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe")
 			break
 		}
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			backendMessages.Add(BackendMessageError, "failed to create stdout pipe")
+			log(LogDeactivation|LogFlagErr, "Failed to create stderr pipe")
 			break
 		}
 
 		// Start the process
 		err = cmd.Start()
 		if err != nil {
-			backendMessages.Add(BackendMessageError, "failed to start process")
+			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe")
 			break
 		}
-		log.channel <- diagnosticMessageF("Process \"%v\" started", task.Cmdline[0])
+		log(LogTask, "Process started")
 
 		// Run pipe reading goroutines
 		var pipeWaitGroup sync.WaitGroup
 		pipeWaitGroup.Add(2)
 		go func() {
-			log.streamOutput(stdoutPipe)
+			perTaskLogger.streamOutput(stdoutPipe)
 			pipeWaitGroup.Done()
 		}()
 		go func() {
-			log.streamOutput(stderrPipe)
+			perTaskLogger.streamOutput(stderrPipe)
 			pipeWaitGroup.Done()
 		}()
 
-		// Wait for the process in the background
+		// Wait for the process in a separate goroutine and signal when it ends. It's important to first wait for the
+		// goroutines streaming the output. Otherwise, cmd.Wait() will close the pipes leading to a race condition.
 		processResultChannel := make(chan int)
 		go func() {
 			pipeWaitGroup.Wait()
@@ -148,30 +191,23 @@ MainLoop:
 		select {
 		case exitCode := <-processResultChannel:
 			// Process ended.
-			log.channel <- diagnosticMessageF("Process ended with code %v", exitCode)
-			log.channel <- emptyLinesMessage(3)
+			logF(LogTask|LogFlagTaskSeparator, "Process ended with code %v", exitCode)
 			if exitCode == 0 {
 				subsequentFailures = 0
 			} else {
 				subsequentFailures++
 			}
-		case <-log.errorChannel:
+		case <-perTaskLogger.errorChannel:
 			// Logger failed. We don't want to execute processes without logging. Kill the process and return error.
-			backendMessages.Add(BackendMessageError, "Failed logging")
-			break MainLoop
+			log(LogDeactivation|LogFlagErr, "Failed logging")
 		case reason := <-task.Channels.StopChannel:
-			backendMessages.AddF(BackendMessageInfo, "Process killed (%v)", reason)
-			break MainLoop
+			logF(LogDeactivation, "Process killed (%v)", reason)
 		}
 
 		// Handle breaks from the main loop
 		if task.MaxSubsequentFailures >= 0 && subsequentFailures >= task.MaxSubsequentFailures {
-			log.channel <- diagnosticMessageF("Process reached subsequent failure count limit of %v. Exiting", task.MaxSubsequentFailures)
+			logF(LogDeactivation, "Task reached subsequent failure count limit of %v", task.MaxSubsequentFailures)
 			break
 		}
-	}
-
-	if TryUnscheduleTask(task, backendState) {
-		backendMessages.Add(BackendMessageInfo, "Unregistered process")
 	}
 }
