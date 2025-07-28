@@ -49,7 +49,7 @@ func main() {
 
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "Display a list of running processes",
+		Short: "Display a list of running tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
@@ -83,9 +83,9 @@ func main() {
 	}
 	noParamsCmd.AddCommand(probeX11Cmd)
 
-	registerCmd := &cobra.Command{
-		Use:   "register command [args...]",
-		Short: "Register process to execute",
+	scheduleCmd := &cobra.Command{
+		Use:   "schedule command [args...]",
+		Short: "Schedule a new task",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			userIndex, err := cmd.Flags().GetInt("userIndex")
@@ -104,7 +104,7 @@ func main() {
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				response, err := frontend.CmdRegister(connection, args, userIndex, friendlyName)
+				response, err := frontend.CmdSchedule(connection, args, userIndex, friendlyName)
 				if err != nil {
 					return err
 				}
@@ -119,10 +119,10 @@ func main() {
 			return nil
 		},
 	}
-	registerCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different processes with the same settings. Does not serve any purpose other than to allow for duplicate processes running.")
-	registerCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
-	registerCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
-	noParamsCmd.AddCommand(registerCmd)
+	scheduleCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different tasks with the same settings. Does not serve any purpose other than to allow for duplicate tasks running.")
+	scheduleCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
+	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+	noParamsCmd.AddCommand(scheduleCmd)
 
 	// TODO add "watchLog" command. For that we'll need a way to query logFile by taskId. This can get tricky if the task is no longer running.
 

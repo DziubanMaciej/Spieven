@@ -69,12 +69,12 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case common.PacketIdRegister:
-			task, err := common.DecodeRegisterPacket(packet)
+		case common.PacketIdSchedule:
+			task, err := common.DecodeSchedulePacket(packet)
 			if err != nil {
 				return
 			}
-			err = CmdRegister(backendState, connection, task)
+			err = CmdSchedule(backendState, connection, task)
 			if err != nil {
 				return
 			}

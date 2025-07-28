@@ -79,10 +79,10 @@ func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*Xor
 	go func() {
 		cmd.Wait()
 
-		// Display is closed. Notify all the process handlers
+		// Display is closed. Stop all tasks using it.
 		displays.lock.Lock()
 		result.IsDeactivated = true
-		scheduler.KillProcessesByDisplay(DisplayXorg, name)
+		scheduler.StopTasksByDisplay(DisplayXorg, name)
 		displays.lock.Unlock()
 	}()
 

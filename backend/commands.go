@@ -66,8 +66,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 	return common.SendPacket(frontendConnection, packet)
 }
 
-// TODO rename register->schedule
-func CmdRegister(backendState *BackendState, frontendConnection net.Conn, request common.RegisterBody) error {
+func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request common.ScheduleBody) error {
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -82,26 +81,26 @@ func CmdRegister(backendState *BackendState, frontendConnection net.Conn, reques
 	switch TryScheduleTask(&task, backendState) {
 	case ScheduleResultSuccess:
 		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
-		responseStatus = common.RegisterResponseSuccess
+		responseStatus = common.ScheduleResponseSuccess
 	case ScheduleResultAlreadyRunning:
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
-		responseStatus = common.RegisterResponseAlreadyRunning
+		responseStatus = common.ScheduleResponseAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		responseStatus = common.RegisterResponseAlreadyRunning
+		responseStatus = common.ScheduleResponseAlreadyRunning
 	default:
 		// Shouldn't happen, but let's handle it gracefully
 		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
-		responseStatus = common.RegisterResponseUnknown
+		responseStatus = common.ScheduleResponseUnknown
 	}
 
-	response := common.RegisterResponseBody{
+	response := common.ScheduleResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
 		LogFile: task.OutFilePath,
 	}
 
-	packet, err := common.EncodeRegisterResponsePacket(response)
+	packet, err := common.EncodeScheduleResponsePacket(response)
 	if err != nil {
 		return err
 	}

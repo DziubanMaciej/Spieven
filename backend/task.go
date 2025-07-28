@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Task struct describes a process that is scheduled to be running in background. For each Task Spieven creates a
+// Task struct describes a command that is scheduled to be running in background. For each Task Spieven creates a
 // goroutine that constantly monitors its state, reruns it if neccessary and logs what's happening to the Task to
 // a file.
 //

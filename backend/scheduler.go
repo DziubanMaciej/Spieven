@@ -78,13 +78,13 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	return ScheduleResultSuccess
 }
 
-func (scheduler *Scheduler) KillProcessesByDisplay(displayType DisplayType, displayName string) {
+func (scheduler *Scheduler) StopTasksByDisplay(displayType DisplayType, displayName string) {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
 	for _, currTask := range scheduler.tasks {
 		if currTask.Computed.DisplayName == displayName && currTask.Computed.DisplayType == displayType {
-			currTask.Channels.StopChannel <- fmt.Sprintf("killing processes on display %v", displayName)
+			currTask.Channels.StopChannel <- fmt.Sprintf("stopping tasks on display %v", displayName)
 		}
 	}
 }
@@ -94,7 +94,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	perTaskLogger := CreateFileLogger(task.OutFilePath)
 	err := perTaskLogger.run()
 	if err != nil {
-		backendState.messages.Add(BackendMessageError, task, "failed to create per-process logger")
+		backendState.messages.Add(BackendMessageError, task, "failed to create per-task logger")
 		return
 	}
 	defer perTaskLogger.stop()
@@ -156,7 +156,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	// Execute the main loop until the task becomes deactivated.
 	subsequentFailures := 0
 	for !isTaskDeactivated {
-		// Initialize the process struct
+		// Initialize the command struct
 		cmdContext, cmdCancel := context.WithCancel(context.Background())
 		defer cmdCancel()
 		cmd := exec.CommandContext(cmdContext, task.Cmdline[0], task.Cmdline[1:]...)
@@ -173,13 +173,13 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			break
 		}
 
-		// Start the process
+		// Start the command
 		err = cmd.Start()
 		if err != nil {
 			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe.")
 			break
 		}
-		log(LogTask, "Process started.")
+		log(LogTask, "Command started.")
 
 		// Run pipe reading goroutines
 		var pipeWaitGroup sync.WaitGroup
@@ -193,9 +193,9 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			pipeWaitGroup.Done()
 		}()
 
-		// Wait for the process in a separate goroutine and signal when it ends. It's important to first wait for the
+		// Wait for the command in a separate goroutine and signal when it ends. It's important to first wait for the
 		// goroutines streaming the output. Otherwise, cmd.Wait() will close the pipes leading to a race condition.
-		processResultChannel := make(chan int)
+		commandResultChannel := make(chan int)
 		go func() {
 			pipeWaitGroup.Wait()
 
@@ -205,24 +205,24 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			if err != nil {
 				status = err.(*exec.ExitError).ExitCode()
 			}
-			processResultChannel <- status
+			commandResultChannel <- status
 		}()
 
 		// Block until something happens
 		select {
-		case exitCode := <-processResultChannel:
-			// Process ended.
-			logF(LogTask|LogFlagTaskSeparator, "Process ended with code %v.", exitCode)
+		case exitCode := <-commandResultChannel:
+			// Command ended.
+			logF(LogTask|LogFlagTaskSeparator, "Command ended with code %v.", exitCode)
 			if exitCode == 0 {
 				subsequentFailures = 0
 			} else {
 				subsequentFailures++
 			}
 		case <-perTaskLogger.errorChannel:
-			// Logger failed. We don't want to execute processes without logging. Kill the process and return error.
+			// Logger failed. We don't want to execute the command without logging. Kill it and return error.
 			log(LogDeactivation|LogFlagErr, "Failed logging.")
 		case reason := <-task.Channels.StopChannel:
-			logF(LogDeactivation, "Process killed (%v).", reason)
+			logF(LogDeactivation, "Command killed (%v).", reason)
 		}
 
 		// Handle breaks from the main loop

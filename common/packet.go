@@ -10,7 +10,7 @@ type PacketId byte
 const (
 	// Frontend->Backend commands
 	PacketIdHandshake PacketId = iota
-	PacketIdRegister
+	PacketIdSchedule
 	PacketIdSummary
 	PacketIdList
 	PacketIdLog
@@ -18,7 +18,7 @@ const (
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
-	PacketIdRegisterResponse
+	PacketIdScheduleResponse
 	PacketIdListResponse
 	PacketIdLogResponse
 	PacketIdNotifyTaskEndResponse
@@ -73,7 +73,7 @@ func DecodeHandshakePacket(packet Packet) (result uint64, err error) {
 	return
 }
 
-type RegisterBody struct {
+type ScheduleBody struct {
 	Cmdline      []string
 	Cwd          string
 	Env          []string
@@ -81,12 +81,12 @@ type RegisterBody struct {
 	FriendlyName string
 }
 
-func EncodeRegisterPacket(data RegisterBody) (Packet, error) {
-	return EncodePacket(PacketIdRegister, data)
+func EncodeSchedulePacket(data ScheduleBody) (Packet, error) {
+	return EncodePacket(PacketIdSchedule, data)
 }
 
-func DecodeRegisterPacket(packet Packet) (result RegisterBody, err error) {
-	err = DecodePacket(packet, PacketIdRegister, &result)
+func DecodeSchedulePacket(packet Packet) (result ScheduleBody, err error) {
+	err = DecodePacket(packet, PacketIdSchedule, &result)
 	return
 }
 
@@ -104,33 +104,33 @@ type SummaryResponseBody struct {
 }
 
 func EncodeSummaryResponsePacket(data SummaryResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdRegister, data)
+	return EncodePacket(PacketIdSchedule, data)
 }
 
 func DecodeSummaryResponsePacket(packet Packet) (result SummaryResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdRegister, &result)
+	err = DecodePacket(packet, PacketIdSchedule, &result)
 	return
 }
 
 const (
-	RegisterResponseSuccess byte = iota
-	RegisterResponseAlreadyRunning
-	RegisterResponseInvalidDisplay
-	RegisterResponseUnknown
+	ScheduleResponseSuccess byte = iota
+	ScheduleResponseAlreadyRunning
+	ScheduleResponseInvalidDisplay
+	ScheduleResponseUnknown
 )
 
-type RegisterResponseBody struct {
+type ScheduleResponseBody struct {
 	Status  byte
 	Id      int
 	LogFile string
 }
 
-func EncodeRegisterResponsePacket(value RegisterResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdRegisterResponse, &value)
+func EncodeScheduleResponsePacket(value ScheduleResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdScheduleResponse, &value)
 }
 
-func DecodeRegisterResponsePacket(packet Packet) (result RegisterResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdRegisterResponse, &result)
+func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdScheduleResponse, &result)
 	return
 }
 

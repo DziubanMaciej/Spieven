@@ -13,6 +13,7 @@ func ConnectToBackend() (net.Conn, error) {
 
 	connection, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err != nil {
+		// TODO start the backend and disown it
 		return nil, err
 	}
 

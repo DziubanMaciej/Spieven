@@ -11,12 +11,12 @@
         },
 
         {
-            "name": "Frontend register",
+            "name": "Frontend schedule",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "args": [
-               "register",
+               "schedule",
                "bash",
                "${workspaceFolder}/test_script.sh"
            ],

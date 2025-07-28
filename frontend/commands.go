@@ -32,7 +32,7 @@ func CmdSummary(backendConnection net.Conn) error {
 	}
 
 	fmt.Printf("Version: %v\n", summary.Version)
-	fmt.Printf("Running processes: %v\n", summary.ConnectionCount)
+	fmt.Printf("Running tasks: %v\n", summary.ConnectionCount)
 	return nil
 }
 
@@ -86,24 +86,24 @@ func CmdList(backendConnection net.Conn) error {
 	}
 
 	if len(response) == 0 {
-		fmt.Println("No processes are running")
+		fmt.Println("No tasks are running")
 		return nil
 	}
 
-	for i, process := range response {
+	for i, task := range response {
 		activeStr := "Yes"
-		if process.IsDeactivated {
-			activeStr = fmt.Sprintf("No (%v)", process.DeactivationReason)
+		if task.IsDeactivated {
+			activeStr = fmt.Sprintf("No (%v)", task.DeactivationReason)
 		}
 
-		fmt.Printf("Process %v\n", process.FriendlyName)
+		fmt.Printf("Task %v\n", task.FriendlyName)
 		fmt.Printf("  Active:                %v\n", activeStr)
-		fmt.Printf("  Id:                    %v\n", process.Id)
-		fmt.Printf("  Cmdline:               %v\n", process.Cmdline)
-		fmt.Printf("  Cwd:                   %v\n", process.Cwd)
-		fmt.Printf("  OutFilePath:           %v\n", process.OutFilePath)
-		fmt.Printf("  MaxSubsequentFailures: %v\n", process.MaxSubsequentFailures)
-		fmt.Printf("  UserIndex:             %v\n", process.UserIndex)
+		fmt.Printf("  Id:                    %v\n", task.Id)
+		fmt.Printf("  Cmdline:               %v\n", task.Cmdline)
+		fmt.Printf("  Cwd:                   %v\n", task.Cwd)
+		fmt.Printf("  OutFilePath:           %v\n", task.OutFilePath)
+		fmt.Printf("  MaxSubsequentFailures: %v\n", task.MaxSubsequentFailures)
+		fmt.Printf("  UserIndex:             %v\n", task.UserIndex)
 
 		if i < len(response)-1 {
 			fmt.Println()
@@ -113,7 +113,7 @@ func CmdList(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdRegister(backendConnection net.Conn, args []string, userIndex int, friendlyName string) (*common.RegisterResponseBody, error) {
+func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string) (*common.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -127,7 +127,7 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int, frien
 		friendlyName = args[0]
 	}
 
-	body := common.RegisterBody{
+	body := common.ScheduleBody{
 		Cmdline:      args,
 		Cwd:          cwd,
 		Env:          os.Environ(),
@@ -135,7 +135,7 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int, frien
 		FriendlyName: friendlyName,
 	}
 
-	requestPacket, err := common.EncodeRegisterPacket(body)
+	requestPacket, err := common.EncodeSchedulePacket(body)
 	if err != nil {
 		return nil, err
 	}
@@ -150,18 +150,18 @@ func CmdRegister(backendConnection net.Conn, args []string, userIndex int, frien
 		return nil, err
 	}
 
-	response, err := common.DecodeRegisterResponsePacket(responsePacket)
+	response, err := common.DecodeScheduleResponsePacket(responsePacket)
 	if err != nil {
 		return nil, err
 	}
 
 	switch response.Status {
-	case common.RegisterResponseSuccess:
+	case common.ScheduleResponseSuccess:
 		fmt.Println("Scheduled task")
 		fmt.Println("Log file: ", response.LogFile)
-	case common.RegisterResponseAlreadyRunning:
+	case common.ScheduleResponseAlreadyRunning:
 		fmt.Println("Task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details.")
-	case common.RegisterResponseInvalidDisplay:
+	case common.ScheduleResponseInvalidDisplay:
 		fmt.Println("Task is using invalid display")
 	default:
 		fmt.Println("Unknown scheduling error")
@@ -192,7 +192,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string)
 		err = WatchFile(logFilePath, &watchFileStopFlag)
 		if err != nil {
 			// TODO implement this. Try using SetReadDeadline on the socket. Research if it needs to be reset to some default afterwards.
-			fmt.Println("Error watching file. Currently stopping another goroutine is not implemented, so this process will hang until task ends.")
+			fmt.Println("Error watching file. Currently stopping another goroutine is not implemented, so this process will hang until the task ends.")
 		}
 	}()
 
