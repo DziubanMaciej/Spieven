@@ -85,17 +85,11 @@ func (log *FileLogger) run() error {
 			}
 
 			// Write the message
-			written := 0
-			for written < len(chunk) {
-				writtenThisIteration, err := outFile.WriteString(chunk[written:])
-				if err != nil {
-					log.errorChannel <- fmt.Errorf("failed writing to %v", log.outFilePath)
-					return
-				}
-
-				written += writtenThisIteration
+			err = common.WriteBytesToWriter(outFile, []byte(chunk))
+			if err != nil {
+				log.errorChannel <- fmt.Errorf("failed writing to %v", log.outFilePath)
+				return
 			}
-
 		}
 	}()
 

@@ -25,3 +25,16 @@ func CalculateFileHash(path string) (uint64, error) {
 
 	return h.Sum64(), nil
 }
+
+func WriteBytesToWriter(writer io.Writer, value []byte) error {
+	written := 0
+	for written < len(value) {
+		writtenThisIteration, err := writer.Write(value[written:])
+		if err != nil {
+			return err
+		}
+
+		written += writtenThisIteration
+	}
+	return nil
+}
