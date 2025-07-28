@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"supervisor/common"
 )
 
 type FilePathProvider struct {
@@ -13,6 +14,8 @@ type FilePathProvider struct {
 	TaskLogsDir            string
 	DeactivatedTasksFile   string
 	BackendMessagesLogFile string
+
+	_ common.NoCopy
 }
 
 func CreateFilePathProvider() (*FilePathProvider, error) {

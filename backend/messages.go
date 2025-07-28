@@ -53,6 +53,8 @@ type BackendMessages struct {
 	messages []BackendMessage
 	logFile  *os.File
 	lock     sync.Mutex
+
+	_ common.NoCopy
 }
 
 func CreateBackendMessages(logFilePath string) (*BackendMessages, error) {

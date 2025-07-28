@@ -20,7 +20,7 @@ func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
 }
 
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
-	messages := &backendState.messages
+	messages := backendState.messages
 
 	messages.lock.Lock()
 	response := make(common.LogResponseBody, len(messages.messages))

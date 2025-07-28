@@ -9,10 +9,10 @@ import (
 // handlers. It consists of structs containing synchronized methods, to allow access from different goroutines.
 // TODO implement Cleanup() function. Handle Ctrl+C. Make sure all goroutines are stopped. Call files.Cleanup() to remove cached files
 type BackendState struct {
-	messages  BackendMessages
+	messages  *BackendMessages
 	scheduler Scheduler
 	displays  Displays
-	files     FilePathProvider
+	files     *FilePathProvider
 
 	handshakeValue uint64
 
@@ -33,8 +33,8 @@ func CreateBackendState() (*BackendState, error) {
 	}
 
 	backendState := BackendState{
-		files:    *files,
-		messages: *messages,
+		files:    files,
+		messages: messages,
 	}
 	backendState.StartTrimGoroutine()
 
@@ -55,7 +55,7 @@ func (state *BackendState) StartTrimGoroutine() {
 				return
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
-				state.scheduler.Trim(maxTaskAge, &state.messages)
+				state.scheduler.Trim(maxTaskAge, state.messages)
 				state.displays.Trim()
 			}
 		}
