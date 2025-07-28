@@ -2,6 +2,8 @@ package backend
 
 import (
 	"fmt"
+	"os"
+	"supervisor/common"
 	"sync"
 	"time"
 )
@@ -49,7 +51,25 @@ func (msg *BackendMessage) String() string {
 // BackendMessages stores instances of BackendMessage and exposes methods to retrieve and manage them.
 type BackendMessages struct {
 	messages []BackendMessage
+	logFile  *os.File
 	lock     sync.Mutex
+}
+
+func CreateBackendMessages(logFilePath string) (*BackendMessages, error) {
+	logFile, err := os.OpenFile(logFilePath, os.O_EXCL|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &BackendMessages{
+		logFile: logFile,
+	}, nil
+}
+
+func (messages *BackendMessages) Cleanup() {
+	if messages.logFile != nil {
+		messages.logFile.Close()
+		messages.logFile = nil
+	}
 }
 
 func (messages *BackendMessages) String() string {
@@ -75,6 +95,16 @@ func (messages *BackendMessages) Add(severity BackendMessageSeverity, task *Task
 
 	messages.lock.Lock()
 	messages.messages = append(messages.messages, msg)
+
+	if messages.logFile != nil {
+		msgWithNewline := msg.String() + "\n"
+		err := common.WriteBytesToWriter(messages.logFile, []byte(msgWithNewline))
+		if err != nil {
+			messages.logFile.Close()
+			messages.logFile = nil
+		}
+	}
+
 	messages.lock.Unlock()
 }
 

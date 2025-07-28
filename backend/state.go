@@ -27,8 +27,14 @@ func CreateBackendState() (*BackendState, error) {
 		return nil, err
 	}
 
+	messages, err := CreateBackendMessages(files.GetBackendMessagesLogFile())
+	if err != nil {
+		return nil, err
+	}
+
 	backendState := BackendState{
-		files: *files,
+		files:    *files,
+		messages: *messages,
 	}
 	backendState.StartTrimGoroutine()
 
