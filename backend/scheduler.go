@@ -51,7 +51,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	defer scheduler.lock.Unlock()
 
 	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
-	newTask.Init(scheduler.currentId)
+	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated && currTask.Computed.Hash == newTask.Computed.Hash {
 			return ScheduleResultAlreadyRunning
@@ -91,7 +91,7 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType DisplayType, displayN
 
 func ExecuteTask(task *Task, backendState *BackendState) {
 	// Initialize per-task logger
-	perTaskLogger := CreateFileLogger(task.OutFilePath)
+	perTaskLogger := CreateFileLogger(task.Computed.OutFilePath)
 	err := perTaskLogger.run()
 	if err != nil {
 		backendState.messages.Add(BackendMessageError, task, "failed to create per-task logger")

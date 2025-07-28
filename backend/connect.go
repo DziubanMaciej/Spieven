@@ -96,7 +96,10 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 }
 
 func RunServer() error {
-	var backendState BackendState
+	backendState, err := CreateBackendState()
+	if err != nil {
+		return err
+	}
 
 	// Calculate hash used for verifying frontend requests
 	handshakeValue, err := common.CalculateSpievenFileHash()
@@ -104,9 +107,6 @@ func RunServer() error {
 		return nil
 	}
 	backendState.handshakeValue = handshakeValue
-
-	// Run trimming goroutine which will regularly clean resources.
-	backendState.StartTrimGoroutine()
 
 	// Create socket
 	listener, err := net.Listen("tcp4", common.HostWithPort)
@@ -122,6 +122,6 @@ func RunServer() error {
 			return err
 		}
 
-		go HandleConnection(&backendState, connection)
+		go HandleConnection(backendState, connection)
 	}
 }

@@ -19,17 +19,18 @@ type Task struct {
 	Cmdline               []string
 	Cwd                   string
 	Env                   []string
-	OutFilePath           string
 	MaxSubsequentFailures int
 	UserIndex             int
 	FriendlyName          string
 
 	Computed struct {
 		Id          int
-		Hash        int
+		OutFilePath string
+		LogLabel    string
 		DisplayType DisplayType
 		DisplayName string
-		LogLabel    string
+
+		Hash int
 	}
 
 	Channels struct {
@@ -53,13 +54,15 @@ const (
 	DisplayWayland
 )
 
-func (task *Task) Init(id int) {
+func (task *Task) Init(id int, outFilePath string) {
 	task.Computed.Id = id
-	task.Computed.Hash = task.ComputeHash()
-	task.Computed.DisplayType, task.Computed.DisplayName = task.ComputeDisplay()
+	task.Computed.OutFilePath = outFilePath
 	task.Computed.LogLabel = task.ComputeLogLabel(id)
+	task.Computed.DisplayType, task.Computed.DisplayName = task.ComputeDisplay()
 
 	task.Channels.StopChannel = task.CreateStopChannel()
+
+	task.Computed.Hash = task.ComputeHash()
 }
 
 func (task *Task) ComputeHash() int {
@@ -79,9 +82,11 @@ func (task *Task) ComputeHash() int {
 
 	writeStrings(task.Cmdline)
 	writeString(task.Cwd)
-	writeString(task.OutFilePath)
 	writeInt(task.MaxSubsequentFailures)
 	writeInt(task.UserIndex)
+	writeString(task.FriendlyName)
+	writeInt(int(task.Computed.DisplayType))
+	writeString(task.Computed.DisplayName)
 
 	return int(h.Sum32())
 }

@@ -48,7 +48,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
 		responseItem.Id = task.Computed.Id
 		responseItem.Cmdline = task.Cmdline
 		responseItem.Cwd = task.Cwd
-		responseItem.OutFilePath = task.OutFilePath
+		responseItem.OutFilePath = task.Computed.OutFilePath
 		responseItem.MaxSubsequentFailures = task.MaxSubsequentFailures
 		responseItem.UserIndex = task.UserIndex
 		responseItem.IsDeactivated = task.Dynamic.IsDeactivated
@@ -69,7 +69,6 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
-		OutFilePath:           "/home/maciej/work/Spieven/test_scripts/log.txt", // TODO define some directory for logs and generate proper paths
 		MaxSubsequentFailures: 3,
 		Env:                   request.Env,
 		UserIndex:             request.UserIndex,
@@ -96,7 +95,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	response := common.ScheduleResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
-		LogFile: task.OutFilePath,
+		LogFile: task.Computed.OutFilePath,
 	}
 
 	packet, err := common.EncodeScheduleResponsePacket(response)

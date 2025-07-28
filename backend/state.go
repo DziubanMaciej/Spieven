@@ -7,17 +7,35 @@ import (
 
 // BackendState stores global state shared by whole backend, i.e by all frontend connections and running tasks
 // handlers. It consists of structs containing synchronized methods, to allow access from different goroutines.
+// TODO implement Cleanup() function. Handle Ctrl+C. Make sure all goroutines are stopped. Call files.Cleanup() to remove cached files
 type BackendState struct {
 	messages  BackendMessages
 	scheduler Scheduler
 	displays  Displays
+	files     FilePathProvider
 
 	handshakeValue uint64
+
+	trimGoroutineStopChannel *chan struct{}
 
 	_ common.NoCopy
 }
 
-func (state *BackendState) StartTrimGoroutine() chan struct{} {
+func CreateBackendState() (*BackendState, error) {
+	files, err := CreateFilePathProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	backendState := BackendState{
+		files: *files,
+	}
+	backendState.StartTrimGoroutine()
+
+	return &backendState, nil
+}
+
+func (state *BackendState) StartTrimGoroutine() {
 	const maxMessageAge = time.Hour * 2
 	const maxTaskAge = time.Minute * 5
 	const trimInterval = min(maxMessageAge, maxTaskAge) / 2
@@ -37,5 +55,11 @@ func (state *BackendState) StartTrimGoroutine() chan struct{} {
 		}
 	}()
 
-	return stopChannel
+	state.trimGoroutineStopChannel = &stopChannel
+}
+
+func (state *BackendState) StopTrimGoroutine() {
+	if state.trimGoroutineStopChannel != nil {
+		*state.trimGoroutineStopChannel <- struct{}{}
+	}
 }
