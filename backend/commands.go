@@ -3,7 +3,6 @@ package backend
 import (
 	"net"
 	"supervisor/common"
-	"time"
 )
 
 func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
@@ -108,40 +107,25 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	return common.SendPacket(frontendConnection, packet)
 }
 
-func CmdNotifyTaskEnd(backendState *BackendState, frontendConnection net.Conn, taskId int) error {
+func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn, taskId int) error {
 	scheduler := &backendState.scheduler
 
-	var response common.NotifyTaskEndResponseBody
-	var reponseSet bool
+	var response common.QueryTaskActiveResponseBody
 
-	for !reponseSet {
-		// TODO ensure this loop exits when frontend exits early
-
-		scheduler.lock.Lock()
-
-		if taskId > scheduler.currentId {
-			response = common.NotifyTaskEndResponseInvalidTask
-			reponseSet = true
-		}
-
-		stillRunning := false
+	scheduler.lock.Lock()
+	if taskId < scheduler.currentId {
+		response = common.QueryTaskActiveResponseBodyInactive
 		for _, task := range scheduler.tasks {
 			if task.Computed.Id == taskId && !task.Dynamic.IsDeactivated {
-				stillRunning = true
+				response = common.QueryTaskActiveResponseBodyActive
 			}
 		}
-
-		if !stillRunning {
-			response = common.NotifyTaskEndResponseEnded
-			reponseSet = true
-		}
-
-		scheduler.lock.Unlock()
-
-		time.Sleep(time.Millisecond * 500)
+	} else {
+		response = common.QueryTaskActiveResponseInvalidTask
 	}
+	scheduler.lock.Unlock()
 
-	packet, err := common.EncodeNotifyTaskEndResponsePacket(response)
+	packet, err := common.EncodeQueryTaskActiveResponsePacket(response)
 	if err != nil {
 		return err
 	}

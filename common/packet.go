@@ -14,14 +14,14 @@ const (
 	PacketIdSummary
 	PacketIdList
 	PacketIdLog
-	PacketIdNotifyTaskEnd
+	PacketIdQueryTaskActive
 
 	// Backend->Frontend commands
 	PacketIdSummaryResponse
 	PacketIdScheduleResponse
 	PacketIdListResponse
 	PacketIdLogResponse
-	PacketIdNotifyTaskEndResponse
+	PacketIdQueryTaskActiveResponse
 )
 
 type Packet struct {
@@ -182,27 +182,28 @@ func DecodeLogResponsePacket(packet Packet) (result LogResponseBody, err error) 
 	return
 }
 
-func EncodeNotifyTaskEndPacket(body int) (Packet, error) {
-	return EncodePacket(PacketIdNotifyTaskEnd, body)
+func EncodeQueryTaskActivePacket(body int) (Packet, error) {
+	return EncodePacket(PacketIdQueryTaskActive, body)
 }
 
-func DecodeNotifyTaskEndPacket(packet Packet) (result int, err error) {
-	err = DecodePacket(packet, PacketIdNotifyTaskEnd, &result)
+func DecodeQueryTaskActivePacket(packet Packet) (result int, err error) {
+	err = DecodePacket(packet, PacketIdQueryTaskActive, &result)
 	return
 }
 
-type NotifyTaskEndResponseBody byte
+type QueryTaskActiveResponseBody byte
 
 const (
-	NotifyTaskEndResponseEnded NotifyTaskEndResponseBody = iota
-	NotifyTaskEndResponseInvalidTask
+	QueryTaskActiveResponseBodyActive QueryTaskActiveResponseBody = iota
+	QueryTaskActiveResponseBodyInactive
+	QueryTaskActiveResponseInvalidTask
 )
 
-func EncodeNotifyTaskEndResponsePacket(body NotifyTaskEndResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdNotifyTaskEndResponse, body)
+func EncodeQueryTaskActiveResponsePacket(body QueryTaskActiveResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdQueryTaskActiveResponse, body)
 }
 
-func DecodeNotifyTaskEndResponsePacket(packet Packet) (result NotifyTaskEndResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdNotifyTaskEndResponse, &result)
+func DecodeQueryTaskActiveResponsePacket(packet Packet) (result QueryTaskActiveResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdQueryTaskActiveResponse, &result)
 	return
 }

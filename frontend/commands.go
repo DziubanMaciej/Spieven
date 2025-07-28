@@ -8,6 +8,7 @@ import (
 	"supervisor/common"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 func CmdSummary(backendConnection net.Conn) error {
@@ -171,64 +172,75 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 }
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string) error {
-	requestPacket, err := common.EncodeNotifyTaskEndPacket(taskId)
-	if err != nil {
-		return err
+	checkTaskActiveStatus := func() (bool, error) {
+		requestPacket, err := common.EncodeQueryTaskActivePacket(taskId)
+		if err != nil {
+			return false, err
+		}
+
+		err = common.SendPacket(backendConnection, requestPacket)
+		if err != nil {
+			return false, err
+		}
+
+		responsePacket, err := common.ReceivePacket(backendConnection)
+		if err != nil {
+			return false, err
+		}
+
+		response, err := common.DecodeQueryTaskActiveResponsePacket(responsePacket)
+		if err != nil {
+			return false, err
+		}
+
+		switch response {
+		case common.QueryTaskActiveResponseBodyActive:
+			return true, nil
+		case common.QueryTaskActiveResponseBodyInactive:
+			return false, nil
+		case common.QueryTaskActiveResponseInvalidTask:
+			return false, errors.New("invalid task ID sent to backend")
+		default:
+			return false, errors.New("unknown backend error")
+		}
 	}
 
-	err = common.SendPacket(backendConnection, requestPacket)
-	if err != nil {
-		return err
-	}
-
+	// Setup vars for communicating with goroutines
+	var goroutinesStopFlag atomic.Int32
 	var sync sync.WaitGroup
 	sync.Add(2)
 
 	// Goroutine 1: Read the file continuously
-	var watchFileStopFlag atomic.Int32
+	var fileWatchError error
 	go func() {
-		defer sync.Done()
+		fileWatchError = WatchFile(logFilePath, &goroutinesStopFlag)
 
-		err = WatchFile(logFilePath, &watchFileStopFlag)
-		if err != nil {
-			// TODO implement this. Try using SetReadDeadline on the socket. Research if it needs to be reset to some default afterwards.
-			fmt.Println("Error watching file. Currently stopping another goroutine is not implemented, so this process will hang until the task ends.")
-		}
+		sync.Done()
+		goroutinesStopFlag.Store(1)
 	}()
 
 	// Goroutine 2: Wait for the response packet
-	var backendReceiveErr error
+	var backendCommunicationError error
 	go func() {
-		defer sync.Done()
-		defer func() { watchFileStopFlag.Store(1) }()
-
-		responsePacket, err := common.ReceivePacket(backendConnection)
-		if err != nil {
-			backendReceiveErr = err
-			return
+		taskActive := true
+		for goroutinesStopFlag.Load() == 0 && taskActive {
+			taskActive, backendCommunicationError = checkTaskActiveStatus()
+			time.Sleep(time.Second)
 		}
 
-		response, err := common.DecodeNotifyTaskEndResponsePacket(responsePacket)
-		if err != nil {
-			backendReceiveErr = err
-			return
-		}
-
-		switch response {
-		case common.NotifyTaskEndResponseEnded:
-			return
-		case common.NotifyTaskEndResponseInvalidTask:
-			backendReceiveErr = errors.New("invalid task ID sent to backend")
-			return
-		default:
-			backendReceiveErr = errors.New("unknown backend error")
-			return
-		}
+		sync.Done()
+		goroutinesStopFlag.Store(1)
 	}()
 
+	// Wait for both goroutines
 	sync.Wait()
-	if backendReceiveErr != nil {
-		fmt.Println(backendReceiveErr)
+
+	// Print error if any
+	if fileWatchError != nil {
+		fmt.Printf("Log file watching error: %v\n", fileWatchError)
+	}
+	if backendCommunicationError != nil {
+		fmt.Printf("Backend communication error: %v\n", backendCommunicationError)
 	}
 
 	return nil

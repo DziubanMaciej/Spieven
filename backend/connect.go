@@ -78,12 +78,12 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case common.PacketIdNotifyTaskEnd:
-			taskId, err := common.DecodeNotifyTaskEndPacket(packet)
+		case common.PacketIdQueryTaskActive:
+			taskId, err := common.DecodeQueryTaskActivePacket(packet)
 			if err != nil {
 				return
 			}
-			err = CmdNotifyTaskEnd(backendState, connection, taskId)
+			err = CmdQueryTaskActive(backendState, connection, taskId)
 			if err != nil {
 				return
 			}
