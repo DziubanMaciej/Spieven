@@ -15,9 +15,15 @@ func main() {
 		Use:   "app",
 		Short: "A CLI tool",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return backend.RunServer()
+			frequentTrim, err := cmd.Flags().GetBool("frequentTrim")
+			if err != nil {
+				return err
+			}
+
+			return backend.RunServer(frequentTrim)
 		},
 	}
+	noParamsCmd.Flags().BoolP("frequentTrim", "t", false, "Enable very frequent resource trimming. This flag should only be used for testing purposes")
 
 	summaryCmd := &cobra.Command{
 		Use:   "summary",

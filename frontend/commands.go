@@ -224,7 +224,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string)
 	go func() {
 		taskActive := true
 		for goroutinesStopFlag.Load() == 0 && taskActive {
-			taskActive, backendCommunicationError = checkTaskActiveStatus()
+			taskActive, backendCommunicationError = checkTaskActiveStatus() // TODO it's possible the file does not exist yet
 			time.Sleep(time.Second)
 		}
 

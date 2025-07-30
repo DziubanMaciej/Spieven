@@ -2,11 +2,12 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"supervisor/common"
 	"sync"
-	"time"
 )
 
 type Scheduler struct {
@@ -17,23 +18,55 @@ type Scheduler struct {
 	_ common.NoCopy
 }
 
-func (scheduler *Scheduler) Trim(maxAge time.Duration, backendMessages *BackendMessages) {
+func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePathProvider) {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
-	now := time.Now()
-	var newTasks []*Task
+	var tasksToKeep []*Task
+	var tasksToDeactivate []*Task
 
+	// Divide tasks we have in memory into still active and deactivated tasks
 	for _, currTask := range scheduler.tasks {
-		deadline := currTask.Dynamic.DeactivatedTime.Add(maxAge)
-		if currTask.Dynamic.IsDeactivated && deadline.Before(now) {
-			backendMessages.Add(BackendMessageInfo, currTask, "Trimmed task")
+		if currTask.Dynamic.IsDeactivated {
+			tasksToDeactivate = append(tasksToDeactivate, currTask)
 		} else {
-			newTasks = append(newTasks, currTask)
+			tasksToKeep = append(tasksToKeep, currTask)
 		}
 	}
 
-	scheduler.tasks = newTasks
+	// Push deactivated tasks out to a file
+	if len(tasksToDeactivate) > 0 {
+		filePath := files.GetDeactivatedTasksFile()
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			backendMessages.AddF(BackendMessageError, nil, "Failed to open %s. Cannot push deactivated tasks out of memory to a file.", filePath)
+			tasksToKeep = scheduler.tasks // Keep all tasks, so we don't lose data
+		} else {
+			for _, currTask := range tasksToDeactivate {
+				// We're saving this as ndjson - json objects delimeted by newlines. For obvious reasons no fields of
+				// Task can contain newlines.
+				// TODO sanitize all string user inputs for newlines
+				serializedTask, err := json.Marshal(currTask)
+				serializedTask = append(serializedTask, '\n')
+
+				if err == nil {
+					err = common.WriteBytesToWriter(file, serializedTask)
+				}
+
+				if err == nil {
+					backendMessages.Add(BackendMessageInfo, currTask, "Trimmed task")
+				} else {
+					backendMessages.AddF(BackendMessageError, currTask, "Failed to trim task: %s", err)
+					tasksToKeep = append(tasksToKeep, currTask)
+				}
+			}
+			file.Close()
+		}
+
+	}
+
+	// Keep still active tasks in memory
+	scheduler.tasks = tasksToKeep
 }
 
 type ScheduleResult byte

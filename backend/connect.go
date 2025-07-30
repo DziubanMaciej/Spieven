@@ -95,8 +95,8 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	}
 }
 
-func RunServer() error {
-	backendState, err := CreateBackendState()
+func RunServer(frequentTrim bool) error {
+	backendState, err := CreateBackendState(frequentTrim)
 	if err != nil {
 		return err
 	}

@@ -36,7 +36,7 @@ func CreateFilePathProvider() (*FilePathProvider, error) {
 		return nil, err
 	}
 
-	deactivatedTasksFile := path.Join(cacheDir, "deactivatedTasks.json")
+	deactivatedTasksFile := path.Join(cacheDir, "deactivatedTasks.ndjson")
 	err = EnsureFileExistsAndIsEmpty(deactivatedTasksFile)
 	if err != nil {
 		return nil, err

@@ -21,7 +21,7 @@ type BackendState struct {
 	_ common.NoCopy
 }
 
-func CreateBackendState() (*BackendState, error) {
+func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 	files, err := CreateFilePathProvider()
 	if err != nil {
 		return nil, err
@@ -36,15 +36,20 @@ func CreateBackendState() (*BackendState, error) {
 		files:    files,
 		messages: messages,
 	}
-	backendState.StartTrimGoroutine()
+	backendState.StartTrimGoroutine(frequentTrim)
 
 	return &backendState, nil
 }
 
-func (state *BackendState) StartTrimGoroutine() {
+func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 	const maxMessageAge = time.Hour * 2
 	const maxTaskAge = time.Minute * 5
-	const trimInterval = min(maxMessageAge, maxTaskAge) / 2
+	const maxTrimInterval = min(maxMessageAge, maxTaskAge) / 2
+
+	trimInterval := maxTrimInterval
+	if frequentTrim {
+		trimInterval = time.Millisecond * 500
+	}
 
 	stopChannel := make(chan struct{}, 1)
 
@@ -55,7 +60,7 @@ func (state *BackendState) StartTrimGoroutine() {
 				return
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
-				state.scheduler.Trim(maxTaskAge, state.messages)
+				state.scheduler.Trim(state.messages, state.files)
 				state.displays.Trim()
 			}
 		}

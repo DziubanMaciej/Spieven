@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"supervisor/common"
-	"time"
 )
 
 // Task struct describes a command that is scheduled to be running in background. For each Task Spieven creates a
@@ -34,13 +33,12 @@ type Task struct {
 	}
 
 	Channels struct {
-		StopChannel chan string
+		StopChannel chan string `json:"-"`
 	}
 
 	Dynamic struct {
 		IsDeactivated     bool
 		DeactivatedReason string
-		DeactivatedTime   time.Time
 	}
 
 	_ common.NoCopy
@@ -132,5 +130,4 @@ func (task *Task) Deactivate(reason string) {
 	// to scheduler? This way we won't need IsDeactivated field and we won't have to check it.
 	task.Dynamic.IsDeactivated = true
 	task.Dynamic.DeactivatedReason = reason
-	task.Dynamic.DeactivatedTime = time.Now()
 }

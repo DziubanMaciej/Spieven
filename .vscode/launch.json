@@ -8,6 +8,9 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
+            "args": [
+                "-t"
+            ]
         },
 
         {
