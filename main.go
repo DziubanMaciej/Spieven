@@ -25,20 +25,6 @@ func main() {
 	}
 	noParamsCmd.Flags().BoolP("frequentTrim", "t", false, "Enable very frequent resource trimming. This flag should only be used for testing purposes")
 
-	summaryCmd := &cobra.Command{
-		Use:   "summary",
-		Short: "Show a summary",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			connection, err := frontend.ConnectToBackend()
-			if err == nil {
-				defer connection.Close()
-				err = frontend.CmdSummary(connection)
-			}
-			return err
-		},
-	}
-	noParamsCmd.AddCommand(summaryCmd)
-
 	logCmd := &cobra.Command{
 		Use:   "log",
 		Short: "Display a backend log",

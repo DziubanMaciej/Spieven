@@ -42,15 +42,6 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 		}
 
 		switch packet.Id {
-		case common.PacketIdSummary:
-			err := common.DecodeSummaryPacket(packet)
-			if err != nil {
-				return
-			}
-			err = CmdSummary(backendState, connection)
-			if err != nil {
-				return
-			}
 		case common.PacketIdLog:
 			err := common.DecodeLogPacket(packet)
 			if err != nil {

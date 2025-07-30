@@ -5,20 +5,6 @@ import (
 	"supervisor/common"
 )
 
-func CmdSummary(backendState *BackendState, frontendConnection net.Conn) error {
-	response := common.SummaryResponseBody{
-		Version:         "1.0",
-		ConnectionCount: 4,
-	}
-
-	packet, err := common.EncodeSummaryResponsePacket(response)
-	if err != nil {
-		return err
-	}
-
-	return common.SendPacket(frontendConnection, packet)
-}
-
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 	messages := backendState.messages
 

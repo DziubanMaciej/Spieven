@@ -11,32 +11,6 @@ import (
 	"time"
 )
 
-func CmdSummary(backendConnection net.Conn) error {
-	requestPacket, err := common.EncodeSummaryPacket()
-	if err != nil {
-		return err
-	}
-
-	err = common.SendPacket(backendConnection, requestPacket)
-	if err != nil {
-		return err
-	}
-
-	responsePacket, err := common.ReceivePacket(backendConnection)
-	if err != nil {
-		return err
-	}
-
-	summary, err := common.DecodeSummaryResponsePacket(responsePacket)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Version: %v\n", summary.Version)
-	fmt.Printf("Running tasks: %v\n", summary.ConnectionCount)
-	return nil
-}
-
 func CmdLog(backendConnection net.Conn) error {
 	requestPacket, err := common.EncodeLogPacket()
 	if err != nil {

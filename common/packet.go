@@ -11,13 +11,11 @@ const (
 	// Frontend->Backend commands
 	PacketIdHandshake PacketId = iota
 	PacketIdSchedule
-	PacketIdSummary
 	PacketIdList
 	PacketIdLog
 	PacketIdQueryTaskActive
 
 	// Backend->Frontend commands
-	PacketIdSummaryResponse
 	PacketIdScheduleResponse
 	PacketIdListResponse
 	PacketIdLogResponse
@@ -86,28 +84,6 @@ func EncodeSchedulePacket(data ScheduleBody) (Packet, error) {
 }
 
 func DecodeSchedulePacket(packet Packet) (result ScheduleBody, err error) {
-	err = DecodePacket(packet, PacketIdSchedule, &result)
-	return
-}
-
-func EncodeSummaryPacket() (Packet, error) {
-	return EncodePacket(PacketIdSummary, nil)
-}
-
-func DecodeSummaryPacket(packet Packet) error {
-	return DecodePacket(packet, PacketIdSummary, nil)
-}
-
-type SummaryResponseBody struct {
-	Version         string
-	ConnectionCount int
-}
-
-func EncodeSummaryResponsePacket(data SummaryResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdSchedule, data)
-}
-
-func DecodeSummaryResponsePacket(packet Packet) (result SummaryResponseBody, err error) {
 	err = DecodePacket(packet, PacketIdSchedule, &result)
 	return
 }
