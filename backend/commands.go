@@ -37,24 +37,39 @@ func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 	return common.SendPacket(frontendConnection, packet)
 }
 
-func CmdList(backendState *BackendState, frontendConnection net.Conn) error {
+func CmdList(backendState *BackendState, frontendConnection net.Conn, request common.ListBody) error {
 	scheduler := &backendState.scheduler
 
 	scheduler.lock.Lock()
-	response := make(common.ListResponseBody, len(scheduler.tasks))
-	for i, task := range scheduler.tasks {
-		responseItem := &response[i]
-
-		responseItem.Id = task.Computed.Id
-		responseItem.Cmdline = task.Cmdline
-		responseItem.Cwd = task.Cwd
-		responseItem.OutFilePath = task.Computed.OutFilePath
-		responseItem.MaxSubsequentFailures = task.MaxSubsequentFailures
-		responseItem.UserIndex = task.UserIndex
-		responseItem.IsDeactivated = task.Dynamic.IsDeactivated
-		responseItem.DeactivationReason = task.Dynamic.DeactivatedReason
-		responseItem.FriendlyName = task.FriendlyName
+	response := make(common.ListResponseBody, 0)
+	appendTask := func(task *Task) {
+		item := common.ListResponseBodyItem{
+			Id:                    task.Computed.Id,
+			Cmdline:               task.Cmdline,
+			Cwd:                   task.Cwd,
+			OutFilePath:           task.Computed.OutFilePath,
+			MaxSubsequentFailures: task.MaxSubsequentFailures,
+			UserIndex:             task.UserIndex,
+			IsDeactivated:         task.Dynamic.IsDeactivated,
+			DeactivationReason:    task.Dynamic.DeactivatedReason,
+			FriendlyName:          task.FriendlyName,
+		}
+		response = append(response, item)
 	}
+
+	for _, task := range scheduler.tasks {
+		if !task.Dynamic.IsDeactivated || request.IncludeDeactivated {
+			appendTask(task)
+		}
+	}
+
+	if request.IncludeDeactivated {
+		tasks := scheduler.ReadTrimmedTasks(backendState.messages, backendState.files)
+		for _, task := range tasks {
+			appendTask(task)
+		}
+	}
+
 	scheduler.lock.Unlock()
 
 	packet, err := common.EncodeListResponsePacket(response)

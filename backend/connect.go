@@ -61,11 +61,11 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		case common.PacketIdList:
-			err := common.DecodeListPacket(packet)
+			request, err := common.DecodeListPacket(packet)
 			if err != nil {
 				return
 			}
-			err = CmdList(backendState, connection)
+			err = CmdList(backendState, connection, request)
 			if err != nil {
 				return
 			}

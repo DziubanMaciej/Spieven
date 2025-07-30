@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -67,6 +68,31 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 
 	// Keep still active tasks in memory
 	scheduler.tasks = tasksToKeep
+}
+
+func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, files *FilePathProvider) []*Task {
+	var result []*Task
+
+	filePath := files.GetDeactivatedTasksFile()
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+	if err != nil {
+		backendMessages.AddF(BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
+		return result
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var task Task
+		err := json.Unmarshal(scanner.Bytes(), &task)
+		if err != nil {
+			backendMessages.AddF(BackendMessageError, nil, "Failed decoding a task from %s: %s", filePath, err.Error())
+			continue
+		}
+
+		result = append(result, &task)
+	}
+
+	return result
 }
 
 type ScheduleResult byte

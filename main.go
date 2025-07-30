@@ -57,14 +57,20 @@ func main() {
 		Use:   "list",
 		Short: "Display a list of running tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			includeDeactivated, err := cmd.Flags().GetBool("includeDeactivated")
+			if err != nil {
+				return err
+			}
+
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = frontend.CmdList(connection)
+				err = frontend.CmdList(connection, includeDeactivated)
 			}
 			return err
 		},
 	}
+	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	noParamsCmd.AddCommand(listCmd)
 
 	probeX11Cmd := &cobra.Command{

@@ -65,8 +65,12 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn) error {
-	requestPacket, err := common.EncodeListPacket()
+func CmdList(backendConnection net.Conn, includeDeactivated bool) error {
+	request := common.ListBody{
+		IncludeDeactivated: includeDeactivated,
+	}
+
+	requestPacket, err := common.EncodeListPacket(request)
 	if err != nil {
 		return err
 	}

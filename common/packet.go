@@ -134,15 +134,20 @@ func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, e
 	return
 }
 
-func EncodeListPacket() (Packet, error) {
-	return EncodePacket(PacketIdList, nil)
+type ListBody struct {
+	IncludeDeactivated bool
 }
 
-func DecodeListPacket(packet Packet) error {
-	return DecodePacket(packet, PacketIdList, nil)
+func EncodeListPacket(body ListBody) (Packet, error) {
+	return EncodePacket(PacketIdList, body)
 }
 
-type ListResponseBody []struct {
+func DecodeListPacket(packet Packet) (body ListBody, err error) {
+	err = DecodePacket(packet, PacketIdList, &body)
+	return
+}
+
+type ListResponseBodyItem struct {
 	Id                    int
 	Cmdline               []string
 	Cwd                   string
@@ -153,6 +158,7 @@ type ListResponseBody []struct {
 	DeactivationReason    string
 	FriendlyName          string
 }
+type ListResponseBody []ListResponseBodyItem
 
 func EncodeListResponsePacket(body ListResponseBody) (Packet, error) {
 	return EncodePacket(PacketIdListResponse, body)
