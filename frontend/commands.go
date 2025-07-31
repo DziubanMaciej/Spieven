@@ -39,8 +39,9 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, includeDeactivated bool) error {
+func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) error {
 	request := common.ListBody{
+		Id:                 id,
 		IncludeDeactivated: includeDeactivated,
 	}
 
@@ -65,7 +66,7 @@ func CmdList(backendConnection net.Conn, includeDeactivated bool) error {
 	}
 
 	if len(response) == 0 {
-		fmt.Println("No tasks are running")
+		fmt.Println("No tasks found")
 		return nil
 	}
 

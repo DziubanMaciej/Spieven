@@ -111,6 +111,7 @@ func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, e
 }
 
 type ListBody struct {
+	Id                 uint32
 	IncludeDeactivated bool
 }
 

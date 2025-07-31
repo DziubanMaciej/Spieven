@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"supervisor/backend"
 	"supervisor/common"
@@ -43,6 +44,11 @@ func main() {
 		Use:   "list",
 		Short: "Display a list of running tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := cmd.Flags().GetUint32("id")
+			if err != nil {
+				return err
+			}
+
 			includeDeactivated, err := cmd.Flags().GetBool("includeDeactivated")
 			if err != nil {
 				return err
@@ -51,11 +57,12 @@ func main() {
 			connection, err := frontend.ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = frontend.CmdList(connection, includeDeactivated)
+				err = frontend.CmdList(connection, id, includeDeactivated)
 			}
 			return err
 		},
 	}
+	listCmd.Flags().Uint32P("id", "i", math.MaxUint32, "Display a task with a specific ID")
 	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	noParamsCmd.AddCommand(listCmd)
 

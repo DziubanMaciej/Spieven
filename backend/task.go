@@ -124,10 +124,6 @@ func (task *Task) CreateStopChannel() chan string {
 }
 
 func (task *Task) Deactivate(reason string) {
-	// TODO rework deactivation. Instead of keeping the task in memory for a few hours, trim it quickly, but serialize it to some
-	// file. For most cases we don't care about deactivated tasks, so this is ok. Some commands like querying state about specific
-	// task ID or Spieven list --all will need that and then we can retrieve them from file. Maybe even add deactivateTasks list
-	// to scheduler? This way we won't need IsDeactivated field and we won't have to check it.
 	task.Dynamic.IsDeactivated = true
 	task.Dynamic.DeactivatedReason = reason
 }

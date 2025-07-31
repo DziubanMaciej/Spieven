@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"math"
 	"net"
 	"supervisor/common"
 )
@@ -26,7 +27,6 @@ func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 func CmdList(backendState *BackendState, frontendConnection net.Conn, request common.ListBody) error {
 	scheduler := &backendState.scheduler
 
-	scheduler.lock.Lock()
 	response := make(common.ListResponseBody, 0)
 	appendTask := func(task *Task) {
 		item := common.ListResponseBodyItem{
@@ -43,16 +43,37 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 		response = append(response, item)
 	}
 
+	scheduler.lock.Lock()
+
+	// Prepare a selector function, that returns true when a task should be sent back to the frontend.
+	// By default we want to return all of them, but then we compose additional checks depending on
+	// the frontend request.
+	selector := func(task *Task) bool { return true }
+	if !request.IncludeDeactivated {
+		prev := selector
+		selector = func(task *Task) bool { return prev(task) && !task.Dynamic.IsDeactivated }
+	}
+	if request.Id != math.MaxUint32 {
+		prev := selector
+		selector = func(task *Task) bool { return prev(task) && task.Computed.Id == int(request.Id) }
+	}
+
+	// First look through in-memory list of tasks. Some of them will be active, some can be deactivated,
+	// depending on when Trim() was called.
 	for _, task := range scheduler.tasks {
-		if !task.Dynamic.IsDeactivated || request.IncludeDeactivated {
+		if selector(task) {
 			appendTask(task)
 		}
 	}
 
+	// If we're interested in deactivated tasks, load them from a file. The selector invocation could be moved into
+	// scheduler to avoid building list of all tasks, but let's not worry about that now.
 	if request.IncludeDeactivated {
 		tasks := scheduler.ReadTrimmedTasks(backendState.messages, backendState.files)
 		for _, task := range tasks {
-			appendTask(task)
+			if selector(task) {
+				appendTask(task)
+			}
 		}
 	}
 
