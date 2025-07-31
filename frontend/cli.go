@@ -3,6 +3,7 @@ package frontend
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"supervisor/common"
 
 	"github.com/spf13/cobra"
@@ -95,7 +96,7 @@ func CreateCliCommands() []*cobra.Command {
 				}
 
 				if watch {
-					err := CmdWatchTaskLog(connection, response.Id, response.LogFile)
+					err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
 					if err != nil {
 						return err
 					}
@@ -108,12 +109,30 @@ func CreateCliCommands() []*cobra.Command {
 	scheduleCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 
-	// TODO add "watchLog" command. For that we'll need a way to query logFile by taskId. This can get tricky if the task is no longer running.
+	peekCmd := &cobra.Command{
+		Use:   "peek [taskID]",
+		Short: "Displays logs of a given task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			taskId, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid integer: %v", err)
+			}
+
+			connection, err := ConnectToBackend()
+			if err == nil {
+				defer connection.Close()
+				err = CmdWatchTaskLog(connection, taskId, nil)
+			}
+			return err
+		},
+	}
 
 	return []*cobra.Command{
 		logCmd,
 		listCmd,
 		probeX11Cmd, // TODO move this to some "internal" package
 		scheduleCmd,
+		peekCmd,
 	}
 }

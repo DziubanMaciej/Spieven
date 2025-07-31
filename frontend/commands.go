@@ -150,7 +150,43 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	return &response, nil
 }
 
-func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string) error {
+func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
+	retrieveLogFilePath := func() (string, error) {
+		request := common.ListBody{
+			Id:                 uint32(taskId),
+			IncludeDeactivated: true,
+		}
+
+		requestPacket, err := common.EncodeListPacket(request)
+		if err != nil {
+			return "", err
+		}
+
+		err = common.SendPacket(backendConnection, requestPacket)
+		if err != nil {
+			return "", err
+		}
+
+		responsePacket, err := common.ReceivePacket(backendConnection)
+		if err != nil {
+			return "", err
+		}
+
+		response, err := common.DecodeListResponsePacket(responsePacket)
+		if err != nil {
+			return "", err
+		}
+
+		switch len(response) {
+		case 0:
+			return "", fmt.Errorf("could not find log file")
+		case 1:
+			return response[0].OutFilePath, nil
+		default:
+			return "", fmt.Errorf("multiple log files found. This is highly unexpected")
+		}
+	}
+
 	checkTaskActiveStatus := func() (bool, error) {
 		requestPacket, err := common.EncodeQueryTaskActivePacket(taskId)
 		if err != nil {
@@ -184,6 +220,15 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string)
 		}
 	}
 
+	// If we don't know the path to the log file, we can ask backend for it using taskId.
+	if logFilePath == nil {
+		path, err := retrieveLogFilePath()
+		if err != nil {
+			return err
+		}
+		logFilePath = &path
+	}
+
 	// Setup vars for communicating with goroutines
 	var goroutinesStopFlag atomic.Int32
 	var sync sync.WaitGroup
@@ -192,7 +237,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath string)
 	// Goroutine 1: Read the file continuously
 	var fileWatchError error
 	go func() {
-		fileWatchError = WatchFile(logFilePath, &goroutinesStopFlag)
+		fileWatchError = WatchFile(*logFilePath, &goroutinesStopFlag)
 
 		sync.Done()
 		goroutinesStopFlag.Store(1)
