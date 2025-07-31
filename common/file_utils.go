@@ -1,9 +1,11 @@
 package common
 
 import (
+	"fmt"
 	"hash/fnv"
 	"io"
 	"os"
+	"time"
 )
 
 func CalculateSpievenFileHash() (uint64, error) {
@@ -37,4 +39,26 @@ func WriteBytesToWriter(writer io.Writer, value []byte) error {
 		written += writtenThisIteration
 	}
 	return nil
+}
+
+func OpenFileWithTimeout(filePath string, flag int, perm os.FileMode, timeout time.Duration) (file *os.File, err error) {
+	iterations := 5
+	deadline := time.Now()
+	timeoutPerIteration := timeout / time.Duration(iterations)
+
+	for i := 0; i < iterations; i++ {
+		fmt.Printf("Iter %v (timeoutPerIteration=%v)\n", i, timeoutPerIteration)
+		file, err = os.OpenFile(filePath, flag, perm)
+		if err == nil {
+			break
+		} else {
+			now := time.Now()
+			deadline = deadline.Add(timeoutPerIteration)
+			if now.Before(deadline) {
+				time.Sleep(deadline.Sub(now))
+			}
+		}
+
+	}
+	return
 }

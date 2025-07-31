@@ -237,7 +237,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	// Goroutine 1: Read the file continuously
 	var fileWatchError error
 	go func() {
-		fileWatchError = WatchFile(*logFilePath, &goroutinesStopFlag)
+		fileWatchError = WatchFile(taskId, *logFilePath, &goroutinesStopFlag)
 
 		sync.Done()
 		goroutinesStopFlag.Store(1)
@@ -248,7 +248,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	go func() {
 		taskActive := true
 		for goroutinesStopFlag.Load() == 0 && taskActive {
-			taskActive, backendCommunicationError = checkTaskActiveStatus() // TODO it's possible the file does not exist yet
+			taskActive, backendCommunicationError = checkTaskActiveStatus()
 			if taskActive {
 				time.Sleep(time.Second)
 			}
