@@ -18,7 +18,7 @@ func WatchFile(filePath string, stopFlag *atomic.Int32) error {
 
 	reader := bufio.NewReader(file)
 
-	//  Print current contents
+	// Print current contents
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -33,6 +33,10 @@ func WatchFile(filePath string, stopFlag *atomic.Int32) error {
 
 	// Continuously wait for new data
 	for {
+		if stopFlag.Load() != 0 {
+			return nil
+		}
+
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -42,9 +46,5 @@ func WatchFile(filePath string, stopFlag *atomic.Int32) error {
 			}
 		}
 		fmt.Print(line)
-
-		if stopFlag.Load() != 0 {
-			return nil
-		}
 	}
 }
