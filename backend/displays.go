@@ -66,7 +66,7 @@ func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*Xor
 
 	// Run watchxorg. If this command ends, it will mean XServer has stopped working.
 	spievenBinary := os.Args[0]
-	cmd := exec.Command(spievenBinary, "watchxorg", name)
+	cmd := exec.Command(spievenBinary, "internal", "watchxorg", name)
 	err := cmd.Start()
 	if err != nil {
 		return nil, fmt.Errorf("cannot start Spieven watchxorg")

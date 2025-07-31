@@ -5,6 +5,7 @@ import (
 	"os"
 	"supervisor/backend"
 	"supervisor/frontend"
+	"supervisor/internal"
 )
 
 func main() {
@@ -14,6 +15,9 @@ func main() {
 	for _, cmd := range frontendCommands {
 		backendCmd.AddCommand(cmd)
 	}
+
+	internalCommand := internal.CreateCliCommands()
+	backendCmd.AddCommand(internalCommand)
 
 	err := backendCmd.Execute()
 	if err != nil {

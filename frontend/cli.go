@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"supervisor/common"
 
 	"github.com/spf13/cobra"
 )
@@ -47,27 +46,6 @@ func CreateCliCommands() []*cobra.Command {
 	}
 	listCmd.Flags().Uint32P("id", "i", math.MaxUint32, "Display a task with a specific ID")
 	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
-
-	probeX11Cmd := &cobra.Command{
-		Use:           "watchxorg [display]",
-		Hidden:        true,
-		Args:          cobra.ExactArgs(1),
-		SilenceErrors: true,
-		SilenceUsage:  true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dpyName := args[0]
-			dpy := common.TryConnectXorg(dpyName)
-			if dpy == nil {
-				return fmt.Errorf("could not connect to xorg %v", dpyName)
-			}
-
-			fmt.Printf("Connected to xorg %v\n", dpyName)
-			common.WatchXorgActive(dpy)
-			common.DisconnectXorg(dpy)
-			fmt.Printf("Disconnected from xorg %v\n", dpyName)
-			return nil
-		},
-	}
 
 	scheduleCmd := &cobra.Command{
 		Use:   "schedule command [args...]",
@@ -131,7 +109,6 @@ func CreateCliCommands() []*cobra.Command {
 	return []*cobra.Command{
 		logCmd,
 		listCmd,
-		probeX11Cmd, // TODO move this to some "internal" package
 		scheduleCmd,
 		peekCmd,
 	}
