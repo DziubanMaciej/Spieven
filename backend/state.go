@@ -51,6 +51,10 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 	return &backendState, nil
 }
 
+func (state *BackendState) IsContextKilled() bool {
+	return state.context.Err() != nil
+}
+
 func (state *BackendState) StartGoroutine(body func()) {
 	state.waitGroup.Add(1)
 	go func() {

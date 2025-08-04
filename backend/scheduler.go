@@ -121,7 +121,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	switch newTask.Computed.DisplayType {
 	case DisplayNone:
 	case DisplayXorg:
-		_, err := backendState.displays.GetXorgDisplay(newTask.Computed.DisplayName, scheduler)
+		_, err := GetXorgDisplay(newTask.Computed.DisplayName, backendState)
 		if err != nil {
 			return ScheduleResultInvalidDisplay
 		}

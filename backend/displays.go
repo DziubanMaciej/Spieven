@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"supervisor/common"
+	"syscall"
 
 	"sync"
 )
@@ -16,7 +17,9 @@ type Displays struct {
 	_ common.NoCopy
 }
 
-func (displays *Displays) GetXorgDisplay(name string, scheduler *Scheduler) (*XorgDisplay, error) {
+func GetXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, error) {
+	displays := &backendState.displays
+
 	displays.lock.Lock()
 	defer displays.lock.Unlock()
 
@@ -26,7 +29,7 @@ func (displays *Displays) GetXorgDisplay(name string, scheduler *Scheduler) (*Xo
 		}
 	}
 
-	newDisplay, err := NewXorgDisplay(name, displays, scheduler)
+	newDisplay, err := NewXorgDisplay(name, backendState)
 	if err == nil {
 		displays.xorgDisplays = append(displays.xorgDisplays, newDisplay)
 	}
@@ -56,7 +59,7 @@ type XorgDisplay struct {
 	_ common.NoCopy
 }
 
-func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*XorgDisplay, error) {
+func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := common.TryConnectXorg(name)
 	if dpy == nil {
@@ -66,7 +69,10 @@ func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*Xor
 
 	// Run watchxorg. If this command ends, it will mean XServer has stopped working.
 	spievenBinary := os.Args[0]
-	cmd := exec.Command(spievenBinary, "internal", "watchxorg", name)
+	cmd := exec.CommandContext(backendState.context, spievenBinary, "internal", "watchxorg", name)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true, // sets the child to a new process group, to avoid forwarding ctrl+C to it
+	}
 	err := cmd.Start()
 	if err != nil {
 		return nil, fmt.Errorf("cannot start Spieven watchxorg")
@@ -76,15 +82,18 @@ func NewXorgDisplay(name string, displays *Displays, scheduler *Scheduler) (*Xor
 		Name: name,
 	}
 
-	go func() {
+	backendState.StartGoroutine(func() {
 		cmd.Wait()
+		if backendState.IsContextKilled() {
+			return
+		}
 
 		// Display is closed. Stop all tasks using it.
-		displays.lock.Lock()
+		backendState.displays.lock.Lock()
 		result.IsDeactivated = true
-		scheduler.StopTasksByDisplay(DisplayXorg, name)
-		displays.lock.Unlock()
-	}()
+		backendState.scheduler.StopTasksByDisplay(DisplayXorg, name)
+		backendState.displays.lock.Unlock()
+	})
 
 	return &result, nil
 }

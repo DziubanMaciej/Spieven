@@ -123,13 +123,13 @@ func RunServer(frequentTrim bool) error {
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			if backendState.context.Err() == nil {
-				// The socket really returned an error. Return it to caller.
-				serverErr = fmt.Errorf("server failure %w", err)
-			} else {
+			if backendState.IsContextKilled() {
 				// We canceled the server for some reason. Not an error. We could store some error
 				// in the future and return it here, though.
 				serverErr = fmt.Errorf("user interrupt detected")
+			} else {
+				// The socket really returned an error. Return it to caller.
+				serverErr = fmt.Errorf("server failure %w", err)
 			}
 			break
 		}
