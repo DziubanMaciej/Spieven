@@ -184,7 +184,11 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			content += " Deactivating."
 
 			isTaskDeactivated = true
-			task.Deactivate(content) // TODO this is not synchronized!
+
+			lock := &backendState.scheduler.lock
+			lock.Lock()
+			task.Deactivate(content)
+			lock.Unlock()
 		}
 		if hasFlag(LogDeactivation | LogBackend) {
 			severity := BackendMessageInfo
