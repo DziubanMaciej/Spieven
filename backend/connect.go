@@ -27,6 +27,12 @@ func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
 func HandleConnection(backendState *BackendState, connection net.Conn) {
 	defer connection.Close()
 
+	// Start a routine that will close the connection, when the backend is killed, so that below loop exits
+	backendState.StartGoroutineAfterContextKill(func() {
+		connection.Close()
+	})
+
+	// Handle handshake with the frontend
 	if common.HandshakeValidationEnabled {
 		err := ValidateHandshake(connection, backendState)
 		if err != nil {
@@ -35,6 +41,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 		}
 	}
 
+	// Handle any packets that are sent until connection is closed
 	for {
 		packet, err := common.ReceivePacket(connection)
 		if err != nil {
@@ -106,13 +113,34 @@ func RunServer(frequentTrim bool) error {
 	}
 	defer listener.Close()
 
+	// Start a routine that will close the socket, when the backend is killed, so that below loop exits
+	backendState.StartGoroutineAfterContextKill(func() {
+		listener.Close()
+	})
+
 	// Listen for connections
+	var serverErr error
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			return err
+			if backendState.context.Err() == nil {
+				// The socket really returned an error. Return it to caller.
+				serverErr = fmt.Errorf("server failure %w", err)
+			} else {
+				// We canceled the server for some reason. Not an error. We could store some error
+				// in the future and return it here, though.
+				serverErr = fmt.Errorf("user interrupt detected")
+			}
+			break
 		}
-
-		go HandleConnection(backendState, connection)
+		backendState.StartGoroutine(func() {
+			HandleConnection(backendState, connection)
+		})
 	}
+
+	// Notify all goroutines that we have to exit and wait for them.
+	backendState.killContext()
+	backendState.waitGroup.Wait()
+
+	return serverErr
 }

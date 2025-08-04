@@ -1,13 +1,17 @@
 package backend
 
 import (
+	"context"
+	"os"
+	"os/signal"
 	"supervisor/common"
+	"sync"
+	"syscall"
 	"time"
 )
 
 // BackendState stores global state shared by whole backend, i.e by all frontend connections and running tasks
 // handlers. It consists of structs containing synchronized methods, to allow access from different goroutines.
-// TODO implement Cleanup() function. Handle Ctrl+C. Make sure all goroutines are stopped. Call files.Cleanup() to remove cached files
 type BackendState struct {
 	messages  *BackendMessages
 	scheduler Scheduler
@@ -16,7 +20,9 @@ type BackendState struct {
 
 	handshakeValue uint64
 
-	trimGoroutineStopChannel *chan struct{}
+	context     context.Context
+	killContext context.CancelFunc
+	waitGroup   sync.WaitGroup
 
 	_ common.NoCopy
 }
@@ -32,13 +38,34 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 		return nil, err
 	}
 
+	context, cancelContext := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
 	backendState := BackendState{
-		files:    files,
-		messages: messages,
+		files:       files,
+		messages:    messages,
+		context:     context,
+		killContext: cancelContext,
 	}
 	backendState.StartTrimGoroutine(frequentTrim)
 
 	return &backendState, nil
+}
+
+func (state *BackendState) StartGoroutine(body func()) {
+	state.waitGroup.Add(1)
+	go func() {
+		body()
+		state.waitGroup.Done()
+	}()
+}
+
+func (state *BackendState) StartGoroutineAfterContextKill(body func()) {
+	state.waitGroup.Add(1)
+	go func() {
+		<-state.context.Done()
+		body()
+		state.waitGroup.Done()
+	}()
 }
 
 func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
@@ -51,12 +78,10 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 		trimInterval = time.Millisecond * 500
 	}
 
-	stopChannel := make(chan struct{}, 1)
-
-	go func() {
+	body := func() {
 		for {
 			select {
-			case <-stopChannel:
+			case <-state.context.Done():
 				return
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
@@ -64,13 +89,6 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 				state.displays.Trim()
 			}
 		}
-	}()
-
-	state.trimGoroutineStopChannel = &stopChannel
-}
-
-func (state *BackendState) StopTrimGoroutine() {
-	if state.trimGoroutineStopChannel != nil {
-		*state.trimGoroutineStopChannel <- struct{}{}
 	}
+	state.StartGoroutine(body)
 }
