@@ -133,7 +133,9 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	scheduler.currentId++
 
 	scheduler.tasks = append(scheduler.tasks, newTask)
-	go ExecuteTask(newTask, backendState)
+	backendState.StartGoroutine(func() {
+		ExecuteTask(newTask, backendState)
+	})
 	return ScheduleResultSuccess
 }
 
@@ -220,7 +222,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	subsequentFailures := 0
 	for !isTaskDeactivated {
 		// Initialize the command struct
-		cmdContext, cmdCancel := context.WithCancel(context.Background())
+		cmdContext, cmdCancel := context.WithCancel(backendState.context)
 		defer cmdCancel()
 		cmd := exec.CommandContext(cmdContext, task.Cmdline[0], task.Cmdline[1:]...)
 		cmd.Dir = task.Cwd
@@ -239,7 +241,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		// Start the command
 		err = cmd.Start()
 		if err != nil {
-			log(LogDeactivation|LogFlagErr, "Failed to create stdout pipe.")
+			log(LogDeactivation|LogFlagErr, "Failed to start the command.")
 			break
 		}
 		log(LogTask, "Command started.")
@@ -247,19 +249,19 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		// Run pipe reading goroutines
 		var pipeWaitGroup sync.WaitGroup
 		pipeWaitGroup.Add(2)
-		go func() {
+		backendState.StartGoroutine(func() {
 			perTaskLogger.streamOutput(stdoutPipe)
 			pipeWaitGroup.Done()
-		}()
-		go func() {
+		})
+		backendState.StartGoroutine(func() {
 			perTaskLogger.streamOutput(stderrPipe)
 			pipeWaitGroup.Done()
-		}()
+		})
 
 		// Wait for the command in a separate goroutine and signal when it ends. It's important to first wait for the
 		// goroutines streaming the output. Otherwise, cmd.Wait() will close the pipes leading to a race condition.
-		commandResultChannel := make(chan int)
-		go func() {
+		commandResultChannel := make(chan int, 1)
+		backendState.StartGoroutine(func() {
 			pipeWaitGroup.Wait()
 
 			status := 0
@@ -269,10 +271,13 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 				status = err.(*exec.ExitError).ExitCode()
 			}
 			commandResultChannel <- status
-		}()
+		})
 
 		// Block until something happens
 		select {
+		case <-cmdContext.Done():
+			// cmdContext derives from BackendState's context, which is killed by Ctrl+C interrupt
+			logF(LogTask|LogDeactivation, "Backend killed.")
 		case exitCode := <-commandResultChannel:
 			// Command ended.
 			logF(LogTask|LogFlagTaskSeparator, "Command ended with code %v.", exitCode)
