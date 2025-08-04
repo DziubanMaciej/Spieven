@@ -37,6 +37,7 @@ func stdoutMessage(message string) LogMessage {
 }
 
 type FileLogger struct {
+	backendState *BackendState
 	channel      chan LogMessage
 	errorChannel chan error
 	waitGroup    sync.WaitGroup
@@ -45,8 +46,9 @@ type FileLogger struct {
 	_ common.NoCopy
 }
 
-func CreateFileLogger(outFilePath string) FileLogger {
+func CreateFileLogger(backendState *BackendState, outFilePath string) FileLogger {
 	return FileLogger{
+		backendState: backendState,
 		channel:      make(chan LogMessage),
 		errorChannel: make(chan error, 1),
 		waitGroup:    sync.WaitGroup{},
@@ -66,7 +68,7 @@ func (log *FileLogger) run() error {
 		return fmt.Errorf("failed opening %v", log.outFilePath)
 	}
 
-	go func() {
+	log.backendState.StartGoroutine(func() {
 		defer outFile.Close()
 		for {
 			// Query message from channel.
@@ -91,7 +93,7 @@ func (log *FileLogger) run() error {
 				return
 			}
 		}
-	}()
+	})
 
 	return nil
 }
