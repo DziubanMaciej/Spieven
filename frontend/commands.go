@@ -115,6 +115,11 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		FriendlyName: friendlyName,
 	}
 
+	err = ValidateScheduleBody(&body)
+	if err != nil {
+		return nil, err
+	}
+
 	requestPacket, err := common.EncodeSchedulePacket(body)
 	if err != nil {
 		return nil, err

@@ -45,8 +45,8 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 		} else {
 			for _, currTask := range tasksToDeactivate {
 				// We're saving this as ndjson - json objects delimeted by newlines. For obvious reasons no fields of
-				// Task can contain newlines.
-				// TODO sanitize all string user inputs for newlines
+				// Task can contain newlines. User inputs are sanitized for newlines, so they shouldn't appear in the
+				// task struct.
 				serializedTask, err := json.Marshal(currTask)
 				serializedTask = append(serializedTask, '\n')
 
@@ -281,7 +281,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			// Logger failed. We don't want to execute the command without logging. Kill it and return error.
 			log(LogDeactivation|LogFlagErr, "Failed logging.")
 		case reason := <-task.Channels.StopChannel:
-			logF(LogDeactivation, "Command killed (%v).", reason)
+			logF(LogDeactivation, "Task killed (%v).", reason)
 		}
 
 		// Handle breaks from the main loop
