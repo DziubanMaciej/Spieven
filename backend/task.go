@@ -37,8 +37,12 @@ type Task struct {
 	}
 
 	Dynamic struct {
-		IsDeactivated     bool
-		DeactivatedReason string
+		RunCount               int
+		FailureCount           int
+		SubsequentFailureCount int
+		LastExitValue          int
+		IsDeactivated          bool
+		DeactivatedReason      string
 	}
 
 	_ common.NoCopy
@@ -121,9 +125,4 @@ func (task *Task) ComputeLogLabel(id int) string {
 
 func (task *Task) CreateStopChannel() chan string {
 	return make(chan string, 1)
-}
-
-func (task *Task) Deactivate(reason string) {
-	task.Dynamic.IsDeactivated = true
-	task.Dynamic.DeactivatedReason = reason
 }

@@ -161,6 +161,14 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	}
 	defer perTaskLogger.stop()
 
+	// Copy the dynamic portion of task structure. Updates to it must be synchronized. We will be updating a local
+	// copy and assign it to the actual task struct under a lock in one go every time something changes. Technically
+	// this initial copy doesn't need a lock, because no other routine than ExecuteTask should ever change task.Dynamic.
+	// But, for completeness we're still locking.
+	backendState.scheduler.lock.Lock()
+	shadowDynamicState := task.Dynamic
+	backendState.scheduler.lock.Unlock()
+
 	// Logging in this function is a bit complicated. We have 3 possible places where logs can go:
 	//  1. FileLogger - per-task file with detailed info about the current task as well as stdout/stderr. All messages
 	//    will go there.
@@ -177,7 +185,6 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		LogFlagErr           LogFlag = 8
 		LogFlagTaskSeparator         = 16
 	)
-	isTaskDeactivated := false
 	log := func(flags LogFlag, content string) {
 		hasFlag := func(f LogFlag) bool {
 			return (flags & f) != 0
@@ -186,12 +193,8 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		if hasFlag(LogDeactivation) {
 			content += " Deactivating."
 
-			isTaskDeactivated = true
-
-			lock := &backendState.scheduler.lock
-			lock.Lock()
-			task.Deactivate(content)
-			lock.Unlock()
+			shadowDynamicState.IsDeactivated = true
+			shadowDynamicState.DeactivatedReason = content
 		}
 		if hasFlag(LogDeactivation | LogBackend) {
 			severity := BackendMessageInfo
@@ -220,8 +223,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	logF(LogTask|LogFlagTaskSeparator, "  DisplayType=%v DisplayName=%v", task.Computed.DisplayType, task.Computed.DisplayName)
 
 	// Execute the main loop until the task becomes deactivated.
-	subsequentFailures := 0
-	for !isTaskDeactivated {
+	for !shadowDynamicState.IsDeactivated {
 		// Initialize the command struct
 		cmdContext, cmdCancel := context.WithCancel(backendState.context)
 		defer cmdCancel()
@@ -275,17 +277,17 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		})
 
 		// Block until something happens
+		commandSuccess := false
 		select {
 		case <-cmdContext.Done():
 			// cmdContext derives from BackendState's context, which is killed by Ctrl+C interrupt
 			logF(LogTask|LogDeactivation, "Backend killed.")
 		case exitCode := <-commandResultChannel:
-			// Command ended.
+			// Command ended normally
 			logF(LogTask|LogFlagTaskSeparator, "Command ended with code %v.", exitCode)
+			shadowDynamicState.LastExitValue = exitCode
 			if exitCode == 0 {
-				subsequentFailures = 0
-			} else {
-				subsequentFailures++
+				commandSuccess = true
 			}
 		case <-perTaskLogger.errorChannel:
 			// Logger failed. We don't want to execute the command without logging. Kill it and return error.
@@ -294,10 +296,23 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			logF(LogDeactivation, "Task killed (%v).", reason)
 		}
 
-		// Handle breaks from the main loop
-		if task.MaxSubsequentFailures >= 0 && subsequentFailures >= task.MaxSubsequentFailures {
-			logF(LogDeactivation, "Task reached subsequent failure count limit of %v.", task.MaxSubsequentFailures)
-			break
+		// Update execution and failure counts
+		shadowDynamicState.RunCount++
+		if commandSuccess {
+			shadowDynamicState.FailureCount = 0
+		} else {
+			shadowDynamicState.FailureCount++
+			shadowDynamicState.SubsequentFailureCount++
 		}
+
+		// Handle MaxSubsequentFailures
+		if task.MaxSubsequentFailures >= 0 && shadowDynamicState.SubsequentFailureCount >= task.MaxSubsequentFailures {
+			logF(LogDeactivation, "Task reached subsequent failure count limit of %v.", task.MaxSubsequentFailures)
+		}
+
+		// Update dynamic state
+		backendState.scheduler.lock.Lock()
+		task.Dynamic = shadowDynamicState
+		backendState.scheduler.lock.Unlock()
 	}
 }

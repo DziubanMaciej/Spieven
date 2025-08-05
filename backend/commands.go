@@ -30,15 +30,19 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 	response := make(common.ListResponseBody, 0)
 	appendTask := func(task *Task) {
 		item := common.ListResponseBodyItem{
-			Id:                    task.Computed.Id,
-			Cmdline:               task.Cmdline,
-			Cwd:                   task.Cwd,
-			OutFilePath:           task.Computed.OutFilePath,
-			MaxSubsequentFailures: task.MaxSubsequentFailures,
-			UserIndex:             task.UserIndex,
-			IsDeactivated:         task.Dynamic.IsDeactivated,
-			DeactivationReason:    task.Dynamic.DeactivatedReason,
-			FriendlyName:          task.FriendlyName,
+			Id:                     task.Computed.Id,
+			Cmdline:                task.Cmdline,
+			Cwd:                    task.Cwd,
+			OutFilePath:            task.Computed.OutFilePath,
+			UserIndex:              task.UserIndex,
+			IsDeactivated:          task.Dynamic.IsDeactivated,
+			DeactivationReason:     task.Dynamic.DeactivatedReason,
+			FriendlyName:           task.FriendlyName,
+			RunCount:               task.Dynamic.RunCount,
+			FailureCount:           task.Dynamic.FailureCount,
+			SubsequentFailureCount: task.Dynamic.SubsequentFailureCount,
+			MaxSubsequentFailures:  task.MaxSubsequentFailures,
+			LastExitValue:          task.Dynamic.LastExitValue,
 		}
 		response = append(response, item)
 	}

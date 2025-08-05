@@ -125,16 +125,20 @@ func DecodeListPacket(packet Packet) (body ListBody, err error) {
 }
 
 type ListResponseBodyItem struct {
-	Id                    int
-	Cmdline               []string
-	Cwd                   string
-	OutFilePath           string
-	MaxSubsequentFailures int
-	UserIndex             int
-	IsDeactivated         bool
-	DeactivationReason    string
-	FriendlyName          string
-	// TODO add captured stdout and return value
+	Id                     int
+	Cmdline                []string
+	Cwd                    string
+	OutFilePath            string
+	MaxSubsequentFailures  int
+	UserIndex              int
+	IsDeactivated          bool
+	DeactivationReason     string
+	FriendlyName           string
+	RunCount               int
+	FailureCount           int
+	SubsequentFailureCount int
+	LastExitValue          int
+	// TODO add captured stdout
 }
 type ListResponseBody []ListResponseBodyItem
 

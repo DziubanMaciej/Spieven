@@ -78,13 +78,17 @@ func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) err
 		}
 
 		fmt.Printf("Task %v\n", task.FriendlyName)
-		fmt.Printf("  Active:                %v\n", activeStr)
-		fmt.Printf("  Id:                    %v\n", task.Id)
-		fmt.Printf("  Cmdline:               %v\n", task.Cmdline)
-		fmt.Printf("  Cwd:                   %v\n", task.Cwd)
-		fmt.Printf("  OutFilePath:           %v\n", task.OutFilePath)
-		fmt.Printf("  MaxSubsequentFailures: %v\n", task.MaxSubsequentFailures)
-		fmt.Printf("  UserIndex:             %v\n", task.UserIndex)
+		fmt.Printf("  Active:                 %v\n", activeStr)
+		fmt.Printf("  Id:                     %v\n", task.Id)
+		fmt.Printf("  Cmdline:                %v\n", task.Cmdline)
+		fmt.Printf("  Cwd:                    %v\n", task.Cwd)
+		fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
+		fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
+		fmt.Printf("  UserIndex:              %v\n", task.UserIndex)
+		fmt.Printf("  RunCount:               %v\n", task.RunCount)
+		fmt.Printf("  FailureCount:           %v\n", task.FailureCount)
+		fmt.Printf("  SubsequentFailureCount: %v\n", task.SubsequentFailureCount)
+		fmt.Printf("  LastExitValue:          %v\n", task.LastExitValue)
 
 		if i < len(response)-1 {
 			fmt.Println()
