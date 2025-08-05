@@ -134,6 +134,7 @@ type ListResponseBodyItem struct {
 	IsDeactivated         bool
 	DeactivationReason    string
 	FriendlyName          string
+	// TODO add captured stdout and return value
 }
 type ListResponseBody []ListResponseBodyItem
 

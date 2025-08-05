@@ -70,6 +70,7 @@ func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) err
 		return nil
 	}
 
+	// TODO add json output format
 	for i, task := range response {
 		activeStr := "Yes"
 		if task.IsDeactivated {

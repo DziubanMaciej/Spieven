@@ -152,6 +152,7 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType DisplayType, displayN
 
 func ExecuteTask(task *Task, backendState *BackendState) {
 	// Initialize per-task logger
+	// TODO save last stdout to a separate file
 	perTaskLogger := CreateFileLogger(backendState, task.Computed.OutFilePath)
 	err := perTaskLogger.run()
 	if err != nil {

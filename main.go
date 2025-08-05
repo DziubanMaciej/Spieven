@@ -16,6 +16,8 @@ func main() {
 		backendCmd.AddCommand(cmd)
 	}
 
+	// TODO do not display help message all the time
+
 	internalCommand := internal.CreateCliCommands()
 	backendCmd.AddCommand(internalCommand)
 
