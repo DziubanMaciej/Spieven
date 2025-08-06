@@ -183,15 +183,17 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	case common.ScheduleResponseSuccess:
 		fmt.Println("Scheduled task")
 		fmt.Println("Log file: ", response.LogFile)
+		return &response, nil
 	case common.ScheduleResponseAlreadyRunning:
-		fmt.Println("Task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details.")
+		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
+		return nil, err
 	case common.ScheduleResponseInvalidDisplay:
-		fmt.Println("Task is using invalid display")
+		err = errors.New("task is using invalid display")
+		return nil, err
 	default:
-		fmt.Println("Unknown scheduling error")
+		err = errors.New("unknown scheduling error")
+		return nil, err
 	}
-
-	return &response, nil
 }
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {

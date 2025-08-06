@@ -95,7 +95,6 @@ func CreateCliCommands() []*cobra.Command {
 				}
 
 				if watch {
-					// TODO do not do  this if failed to schedule
 					err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
 					if err != nil {
 						return err
