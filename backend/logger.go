@@ -37,22 +37,27 @@ func stdoutMessage(message string) LogMessage {
 }
 
 type FileLogger struct {
-	backendState *BackendState
-	channel      chan LogMessage
-	errorChannel chan error
-	waitGroup    sync.WaitGroup
-	outFilePath  string
+	backendState          *BackendState
+	channel               chan LogMessage
+	errorChannel          chan error
+	stdoutFilePathChannel chan string
+	waitGroup             sync.WaitGroup
+	outFilePath           string
+	taskId                int
+	captureStdout         bool
 
 	_ common.NoCopy
 }
 
-func CreateFileLogger(backendState *BackendState, outFilePath string) FileLogger {
+func CreateFileLogger(backendState *BackendState, taskId int, captureStdout bool) FileLogger {
 	return FileLogger{
-		backendState: backendState,
-		channel:      make(chan LogMessage),
-		errorChannel: make(chan error, 1),
-		waitGroup:    sync.WaitGroup{},
-		outFilePath:  outFilePath,
+		backendState:          backendState,
+		channel:               make(chan LogMessage),
+		errorChannel:          make(chan error, 1),
+		stdoutFilePathChannel: make(chan string),
+		waitGroup:             sync.WaitGroup{},
+		taskId:                taskId,
+		captureStdout:         captureStdout,
 	}
 
 }
@@ -62,40 +67,111 @@ func (log *FileLogger) run() error {
 	log.waitGroup.Add(1)
 	defer log.waitGroup.Done()
 
-	// Open file for writing
-	outFile, err := os.Create(log.outFilePath)
+	// Open task file for writing
+	taskFile, err := os.Create(log.backendState.files.GetTaskLogFile(log.taskId))
 	if err != nil {
-		return fmt.Errorf("failed opening %v", log.outFilePath)
+		return fmt.Errorf("failed opening task log file")
+	}
+
+	// Open stdout file for writing. We're going to reopen it as soon as task execution ends, so each execution gets
+	// its own stdout file.
+	taskExecutionId := 0
+	var stdoutFile *os.File
+	if log.captureStdout {
+		stdoutFile, err = os.Create(log.backendState.files.GetStdoutLogFile(log.taskId, taskExecutionId))
+		if err != nil {
+			return fmt.Errorf("failed opening stdout file")
+		}
 	}
 
 	log.backendState.StartGoroutine(func() {
-		defer outFile.Close()
+		// Main loop
+		var loggingErr error
 		for {
 			// Query message from channel.
 			message := <-log.channel
+
+			// Handle stop message, meaning we should exit the logger. This is typically sent when the task gets deactivated.
 			if message.isStop {
 				break
 			}
 
-			// Prepare the message
-			chunk := message.msg
-			if message.isDiagnostic {
-				chunk = fmt.Sprintf("--------------------- %v ---------------------\n", chunk)
-			}
+			// Handle separator message, meaning the task execution ended. String content of separator messages is ignored.
 			if message.isSeparator {
-				chunk += "\n\n\n"
+				// Stdout file - close it and open a new one
+				taskExecutionId++
+				newStdoutFilePath := log.backendState.files.GetStdoutLogFile(log.taskId, taskExecutionId)
+				oldStdoutFilePath := ""
+				oldStdoutFilePath, loggingErr = log.FinalizeStdout(&stdoutFile, &newStdoutFilePath)
+				log.stdoutFilePathChannel <- oldStdoutFilePath
+				if loggingErr != nil {
+					break
+				}
+
+				// Task file - write separator lines
+				if oldStdoutFilePath != "" {
+					stdoutMsg := fmt.Sprintf("Stdout written to %v", oldStdoutFilePath)
+					common.WriteStringToWriter(taskFile, log.WrapWithDiagnosticDecorations(&stdoutMsg))
+				}
+				common.WriteStringToWriter(taskFile, "\n\n\n")
+
+				continue
 			}
 
-			// Write the message
-			err = common.WriteBytesToWriter(outFile, []byte(chunk))
-			if err != nil {
-				log.errorChannel <- fmt.Errorf("failed writing to %v", log.outFilePath)
-				return
+			// Stdout file
+			if !message.isDiagnostic && stdoutFile != nil {
+				loggingErr = common.WriteStringToWriter(stdoutFile, message.msg)
+				if loggingErr != nil {
+					break
+				}
+			}
+
+			// Task file
+			taskFileContent := message.msg
+			if message.isDiagnostic {
+				taskFileContent = log.WrapWithDiagnosticDecorations(&taskFileContent)
+			}
+			loggingErr = common.WriteStringToWriter(taskFile, taskFileContent)
+			if loggingErr != nil {
+				break
 			}
 		}
+
+		// Propagate any errors to a caller via error channel
+		if loggingErr != nil {
+			log.errorChannel <- fmt.Errorf("failed writing to %v", log.outFilePath)
+		}
+
+		// Cleanup files
+		taskFile.Close()
+		log.FinalizeStdout(&stdoutFile, nil)
 	})
 
 	return nil
+}
+
+func (log *FileLogger) WrapWithDiagnosticDecorations(message *string) string {
+	return fmt.Sprintf("--------------------- %v ---------------------\n", *message)
+}
+
+func (log *FileLogger) FinalizeStdout(stdoutFile **os.File, newPath *string) (string, error) {
+	if !log.captureStdout {
+		return "", nil
+	}
+
+	oldPath := (**stdoutFile).Name()
+	(**stdoutFile).Close()
+	*stdoutFile = nil
+
+	if newPath != nil {
+		var err error
+		*stdoutFile, err = os.Create(*newPath)
+		if err != nil {
+			return oldPath, fmt.Errorf("failed opening stdout file")
+		}
+	}
+
+	return oldPath, nil
 }
 
 func (log *FileLogger) stop() {

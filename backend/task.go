@@ -21,6 +21,7 @@ type Task struct {
 	MaxSubsequentFailures int
 	UserIndex             int
 	FriendlyName          string
+	CaptureStdout         bool
 
 	Computed struct {
 		Id          int
@@ -41,6 +42,7 @@ type Task struct {
 		FailureCount           int
 		SubsequentFailureCount int
 		LastExitValue          int
+		LastStdoutFilePath     string
 		IsDeactivated          bool
 		DeactivatedReason      string
 	}

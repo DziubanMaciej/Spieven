@@ -72,11 +72,12 @@ func DecodeHandshakePacket(packet Packet) (result uint64, err error) {
 }
 
 type ScheduleBody struct {
-	Cmdline      []string
-	Cwd          string
-	Env          []string
-	UserIndex    int
-	FriendlyName string
+	Cmdline       []string
+	Cwd           string
+	Env           []string
+	UserIndex     int
+	FriendlyName  string
+	CaptureStdout bool
 }
 
 func EncodeSchedulePacket(data ScheduleBody) (Packet, error) {

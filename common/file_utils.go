@@ -41,6 +41,10 @@ func WriteBytesToWriter(writer io.Writer, value []byte) error {
 	return nil
 }
 
+func WriteStringToWriter(writer io.Writer, value string) error {
+	return WriteBytesToWriter(writer, []byte(value))
+}
+
 func OpenFileWithTimeout(filePath string, flag int, perm os.FileMode, timeout time.Duration) (file *os.File, err error) {
 	iterations := 5
 	deadline := time.Now()
@@ -61,4 +65,12 @@ func OpenFileWithTimeout(filePath string, flag int, perm os.FileMode, timeout ti
 
 	}
 	return
+}
+
+func FileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }

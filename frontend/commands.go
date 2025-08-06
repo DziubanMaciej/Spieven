@@ -98,7 +98,7 @@ func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) err
 	return nil
 }
 
-func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string) (*common.ScheduleResponseBody, error) {
+func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool) (*common.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -113,11 +113,12 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	}
 
 	body := common.ScheduleBody{
-		Cmdline:      args,
-		Cwd:          cwd,
-		Env:          os.Environ(),
-		UserIndex:    userIndex,
-		FriendlyName: friendlyName,
+		Cmdline:       args,
+		Cwd:           cwd,
+		Env:           os.Environ(),
+		UserIndex:     userIndex,
+		FriendlyName:  friendlyName,
+		CaptureStdout: captureStdout,
 	}
 
 	err = ValidateScheduleBody(&body)

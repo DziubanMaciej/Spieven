@@ -64,16 +64,21 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
+			captureStdout, err := cmd.Flags().GetBool("captureStdout")
+			if err != nil {
+				return err
+			}
 
 			connection, err := ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				response, err := CmdSchedule(connection, args, userIndex, friendlyName)
+				response, err := CmdSchedule(connection, args, userIndex, friendlyName, captureStdout)
 				if err != nil {
 					return err
 				}
 
 				if watch {
+					// TODO do not do  this if failed to schedule
 					err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
 					if err != nil {
 						return err
@@ -86,6 +91,7 @@ func CreateCliCommands() []*cobra.Command {
 	scheduleCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different tasks with the same settings. Does not serve any purpose other than to allow for duplicate tasks running.")
 	scheduleCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+	scheduleCmd.Flags().BoolP("captureStdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
 
 	peekCmd := &cobra.Command{
 		Use:   "peek [taskID]",

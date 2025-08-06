@@ -99,6 +99,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		Env:                   request.Env,
 		UserIndex:             request.UserIndex,
 		FriendlyName:          request.FriendlyName,
+		CaptureStdout:         request.CaptureStdout,
 	}
 
 	var responseStatus byte

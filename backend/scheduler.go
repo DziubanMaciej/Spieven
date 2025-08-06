@@ -152,8 +152,7 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType DisplayType, displayN
 
 func ExecuteTask(task *Task, backendState *BackendState) {
 	// Initialize per-task logger
-	// TODO save last stdout to a separate file
-	perTaskLogger := CreateFileLogger(backendState, task.Computed.OutFilePath)
+	perTaskLogger := CreateFileLogger(backendState, task.Computed.Id, task.CaptureStdout)
 	err := perTaskLogger.run()
 	if err != nil {
 		backendState.messages.Add(BackendMessageError, task, "failed to create per-task logger")
@@ -220,7 +219,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	logF(LogTask, "  UserIndex: %v", task.UserIndex)
 	logF(LogTask, "  Cmdline: %v", task.Cmdline)
 	logF(LogTask, "  Cwd: %v", task.Cwd)
-	logF(LogTask|LogFlagTaskSeparator, "  DisplayType=%v DisplayName=%v", task.Computed.DisplayType, task.Computed.DisplayName)
+	logF(LogTask, "  DisplayType=%v DisplayName=%v", task.Computed.DisplayType, task.Computed.DisplayName)
 
 	// Execute the main loop until the task becomes deactivated.
 	for !shadowDynamicState.IsDeactivated {
@@ -284,7 +283,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			logF(LogTask|LogDeactivation, "Backend killed.")
 		case exitCode := <-commandResultChannel:
 			// Command ended normally
-			logF(LogTask|LogFlagTaskSeparator, "Command ended with code %v.", exitCode)
+			logF(LogTask, "Command ended with code %v.", exitCode)
 			shadowDynamicState.LastExitValue = exitCode
 			if exitCode == 0 {
 				commandSuccess = true
@@ -294,6 +293,20 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			log(LogDeactivation|LogFlagErr, "Failed logging.")
 		case reason := <-task.Channels.StopChannel:
 			logF(LogDeactivation, "Task killed (%v).", reason)
+		}
+
+		// Send a separator to the per-task logger and wait for its response via channel. If it's valid, assign
+		// it the task's dynamic state.
+		{
+			log(LogTask|LogFlagTaskSeparator, "")
+			stdoutPath := <-perTaskLogger.stdoutFilePathChannel
+
+			if stdoutPath != "" && !common.FileExists(stdoutPath) {
+				logF(LogBackend|LogFlagErr, "Incorrect stdout file path from per-task logger: %v", stdoutPath)
+				stdoutPath = ""
+			}
+
+			shadowDynamicState.LastStdoutFilePath = stdoutPath
 		}
 
 		// Update execution and failure counts
