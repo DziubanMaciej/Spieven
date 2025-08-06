@@ -4,8 +4,8 @@ import "github.com/spf13/cobra"
 
 func CreateCliCommand() *cobra.Command {
 	command := &cobra.Command{
-		Use:   "Spieven [command] [OPTIONS]",
-		Short: "Spieven - a process supervisor for Linux",
+		Use:   "serve",
+		Short: "Launch Spieven backend engine",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			frequentTrim, err := cmd.Flags().GetBool("frequentTrim")
 			if err != nil {

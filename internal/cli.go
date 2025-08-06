@@ -12,7 +12,6 @@ func CreateCliCommands() *cobra.Command {
 		Use:           "internal",
 		Args:          cobra.ExactArgs(0),
 		SilenceErrors: true,
-		SilenceUsage:  true,
 		Hidden:        true,
 	}
 

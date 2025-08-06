@@ -1,29 +1,36 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"supervisor/backend"
 	"supervisor/frontend"
 	"supervisor/internal"
+
+	"github.com/spf13/cobra"
 )
 
 func main() {
+	rootCmd := &cobra.Command{
+		Use:          "Spieven",
+		Short:        "Spieven is a process supervisor for Linux",
+		Args:         cobra.ExactArgs(0),
+		SilenceUsage: true,
+	}
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	backendCmd := backend.CreateCliCommand()
+	rootCmd.AddCommand(backendCmd)
 
 	frontendCommands := frontend.CreateCliCommands()
 	for _, cmd := range frontendCommands {
-		backendCmd.AddCommand(cmd)
+		rootCmd.AddCommand(cmd)
 	}
 
-	// TODO do not display help message all the time
-
 	internalCommand := internal.CreateCliCommands()
-	backendCmd.AddCommand(internalCommand)
+	rootCmd.AddCommand(internalCommand)
 
-	err := backendCmd.Execute()
+	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
 }
