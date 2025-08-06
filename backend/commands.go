@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"math"
 	"net"
 	"supervisor/common"
 )
@@ -29,6 +28,12 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 
 	response := make(common.ListResponseBody, 0)
 	appendTask := func(task *Task) {
+		stdout, err := task.ReadLastStdout()
+		hasStdout := true
+		if err != nil {
+			hasStdout = false
+		}
+
 		item := common.ListResponseBodyItem{
 			Id:                     task.Computed.Id,
 			Cmdline:                task.Cmdline,
@@ -43,6 +48,8 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 			SubsequentFailureCount: task.Dynamic.SubsequentFailureCount,
 			MaxSubsequentFailures:  task.MaxSubsequentFailures,
 			LastExitValue:          task.Dynamic.LastExitValue,
+			LastStdout:             stdout,
+			HasLastStdout:          hasStdout,
 		}
 		response = append(response, item)
 	}
@@ -57,9 +64,14 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 		prev := selector
 		selector = func(task *Task) bool { return prev(task) && !task.Dynamic.IsDeactivated }
 	}
-	if request.Id != math.MaxUint32 {
+	request.Filter.Derive()
+	if request.Filter.HasIdFilter {
 		prev := selector
-		selector = func(task *Task) bool { return prev(task) && task.Computed.Id == int(request.Id) }
+		selector = func(task *Task) bool { return prev(task) && task.Computed.Id == request.Filter.IdFilter }
+	}
+	if request.Filter.HasNameFilter {
+		prev := selector
+		selector = func(task *Task) bool { return prev(task) && task.FriendlyName == request.Filter.NameFilter }
 	}
 
 	// First look through in-memory list of tasks. Some of them will be active, some can be deactivated,

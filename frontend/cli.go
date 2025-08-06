@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"supervisor/common"
 
 	"github.com/spf13/cobra"
 )
@@ -26,26 +27,42 @@ func CreateCliCommands() []*cobra.Command {
 		Use:   "list",
 		Short: "Display a list of running tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := cmd.Flags().GetUint32("id")
+			idFilter, err := cmd.Flags().GetInt("id")
 			if err != nil {
 				return err
 			}
-
+			nameFilter, err := cmd.Flags().GetString("name")
+			if err != nil {
+				return err
+			}
 			includeDeactivated, err := cmd.Flags().GetBool("includeDeactivated")
 			if err != nil {
+				return err
+			}
+			displayResult, err := cmd.Flags().GetBool("result")
+			if err != nil {
+				return err
+			}
+			filter := common.ListFilter{
+				IdFilter:   idFilter,
+				NameFilter: nameFilter,
+			}
+			if err := filter.Derive(); err != nil {
 				return err
 			}
 
 			connection, err := ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = CmdList(connection, id, includeDeactivated)
+				err = CmdList(connection, filter, includeDeactivated, displayResult)
 			}
 			return err
 		},
 	}
-	listCmd.Flags().Uint32P("id", "i", math.MaxUint32, "Display a task with a specific ID")
+	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
+	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
 	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
+	listCmd.Flags().BoolP("result", "r", false, "Display last exit value and stdout of the task. Must be used with either id or name filter.")
 
 	scheduleCmd := &cobra.Command{
 		Use:   "schedule command [args...]",

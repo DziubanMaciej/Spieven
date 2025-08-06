@@ -39,9 +39,9 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) error {
+func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeactivated bool, displayResult bool) error {
 	request := common.ListBody{
-		Id:                 id,
+		Filter:             filter,
 		IncludeDeactivated: includeDeactivated,
 	}
 
@@ -65,33 +65,66 @@ func CmdList(backendConnection net.Conn, id uint32, includeDeactivated bool) err
 		return err
 	}
 
-	if len(response) == 0 {
-		fmt.Println("No tasks found")
-		return nil
+	if filter.HasUniqueFilter {
+		// We requested to find a specific task by either id or name. We're expecting to find exactly one task.
+		switch len(response) {
+		case 0:
+			return errors.New("task not found")
+		case 1:
+		default:
+			if filter.HasNameFilter {
+				var task *common.ListResponseBodyItem
+				for _, t := range response {
+					if task == nil || t.Id > task.Id {
+						task = &t
+					}
+				}
+				response = []common.ListResponseBodyItem{*task}
+			} else {
+				return errors.New("multiple tasks found, this is unexpected")
+			}
+		}
+	} else {
+		// We can get many tasks
+		if len(response) == 0 {
+			fmt.Println("No tasks found")
+			return nil
+		}
 	}
 
-	// TODO add json output format
-	for i, task := range response {
-		activeStr := "Yes"
-		if task.IsDeactivated {
-			activeStr = fmt.Sprintf("No (%v)", task.DeactivationReason)
+	if displayResult {
+		task := &response[0]
+
+		if task.RunCount == 0 {
+			return errors.New("task has not finished execution yet")
+		}
+		if !task.HasLastStdout {
+			return errors.New("task has no stdout captured. Did you schedule it with --captureStdout flag?")
 		}
 
-		fmt.Printf("Task %v\n", task.FriendlyName)
-		fmt.Printf("  Active:                 %v\n", activeStr)
-		fmt.Printf("  Id:                     %v\n", task.Id)
-		fmt.Printf("  Cmdline:                %v\n", task.Cmdline)
-		fmt.Printf("  Cwd:                    %v\n", task.Cwd)
-		fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
-		fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
-		fmt.Printf("  UserIndex:              %v\n", task.UserIndex)
-		fmt.Printf("  RunCount:               %v\n", task.RunCount)
-		fmt.Printf("  FailureCount:           %v\n", task.FailureCount)
-		fmt.Printf("  SubsequentFailureCount: %v\n", task.SubsequentFailureCount)
-		fmt.Printf("  LastExitValue:          %v\n", task.LastExitValue)
+		fmt.Printf("%v\n%v", task.LastExitValue, task.LastStdout)
+	} else {
+		for i, task := range response {
+			activeStr := "Yes"
+			if task.IsDeactivated {
+				activeStr = fmt.Sprintf("No (%v)", task.DeactivationReason)
+			}
 
-		if i < len(response)-1 {
-			fmt.Println()
+			fmt.Printf("Task %v\n", task.FriendlyName)
+			fmt.Printf("  Active:                 %v\n", activeStr)
+			fmt.Printf("  Id:                     %v\n", task.Id)
+			fmt.Printf("  Cmdline:                %v\n", task.Cmdline)
+			fmt.Printf("  Cwd:                    %v\n", task.Cwd)
+			fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
+			fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
+			fmt.Printf("  UserIndex:              %v\n", task.UserIndex)
+			fmt.Printf("  RunCount:               %v\n", task.RunCount)
+			fmt.Printf("  FailureCount:           %v\n", task.FailureCount)
+			fmt.Printf("  SubsequentFailureCount: %v\n", task.SubsequentFailureCount)
+			fmt.Printf("  LastExitValue:          %v\n", task.LastExitValue)
+			if i < len(response)-1 {
+				fmt.Println()
+			}
 		}
 	}
 
@@ -163,8 +196,9 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
+		filter := common.ListFilter{IdFilter: taskId}
 		request := common.ListBody{
-			Id:                 uint32(taskId),
+			Filter:             filter,
 			IncludeDeactivated: true,
 		}
 

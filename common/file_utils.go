@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -39,6 +40,28 @@ func WriteBytesToWriter(writer io.Writer, value []byte) error {
 		written += writtenThisIteration
 	}
 	return nil
+}
+
+func ReadUntilEof(reader io.Reader) (string, error) {
+	var builder strings.Builder
+	buf := make([]byte, 4096)
+
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			builder.Write(buf[:n])
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return "", err // An actual error occurred
+			}
+
+		}
+	}
+
+	return builder.String(), nil
 }
 
 func WriteStringToWriter(writer io.Writer, value string) error {

@@ -8,7 +8,7 @@ import (
 
 func ValidateString(val string, stringName string) error {
 	for _, r := range val {
-		if unicode.IsControl(r) || r == '"' || r == '\'' || r == '\\' || r == '/' {
+		if unicode.IsControl(r) || r == '"' || r == '\'' || r == '\\' {
 			return fmt.Errorf("%v contains invalid characters", stringName)
 		}
 	}

@@ -1,8 +1,10 @@
 package backend
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
+	"os"
 	"strconv"
 	"strings"
 	"supervisor/common"
@@ -127,4 +129,31 @@ func (task *Task) ComputeLogLabel(id int) string {
 
 func (task *Task) CreateStopChannel() chan string {
 	return make(chan string, 1)
+}
+
+func (task *Task) ReadLastStdout() (stdout string, err error) {
+	if !task.CaptureStdout {
+		err = errors.New("stdout was not captured")
+		return
+	}
+
+	if task.Dynamic.LastStdoutFilePath == "" {
+		err = errors.New("no stdout saved")
+		return
+	}
+
+	var stdoutFile *os.File
+	stdoutFile, err = os.OpenFile(task.Dynamic.LastStdoutFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		err = errors.New("failed opening stdout file")
+		return
+	}
+
+	stdout, err = common.ReadUntilEof(stdoutFile)
+	if err != nil {
+		err = errors.New("error reading stdout file")
+		return
+	}
+
+	return
 }

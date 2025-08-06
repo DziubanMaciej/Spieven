@@ -2,7 +2,9 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 )
 
 type PacketId byte
@@ -111,8 +113,27 @@ func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, e
 	return
 }
 
+type ListFilter struct {
+	IdFilter   int
+	NameFilter string
+
+	HasIdFilter     bool
+	HasNameFilter   bool
+	HasUniqueFilter bool `json:"-"`
+}
+
+func (filter *ListFilter) Derive() error {
+	filter.HasIdFilter = filter.IdFilter != math.MaxInt
+	filter.HasNameFilter = filter.NameFilter != ""
+	filter.HasUniqueFilter = filter.HasIdFilter || filter.HasNameFilter
+	if filter.HasIdFilter && filter.HasNameFilter {
+		return errors.New("more than one unique filters found")
+	}
+	return nil
+}
+
 type ListBody struct {
-	Id                 uint32
+	Filter             ListFilter
 	IncludeDeactivated bool
 }
 
@@ -139,7 +160,8 @@ type ListResponseBodyItem struct {
 	FailureCount           int
 	SubsequentFailureCount int
 	LastExitValue          int
-	// TODO add captured stdout
+	LastStdout             string
+	HasLastStdout          bool
 }
 type ListResponseBody []ListResponseBodyItem
 
