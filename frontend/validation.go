@@ -2,7 +2,7 @@ package frontend
 
 import (
 	"fmt"
-	"supervisor/common"
+	"supervisor/common/packet"
 	"unicode"
 )
 
@@ -25,7 +25,7 @@ func ValidateStrings(val []string, stringName string) error {
 	return nil
 }
 
-func ValidateScheduleBody(val *common.ScheduleBody) error {
+func ValidateScheduleBody(val *packet.ScheduleBody) error {
 	if err := ValidateString(val.Cwd, "field cwd"); err != nil {
 		return err
 	}

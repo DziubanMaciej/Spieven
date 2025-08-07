@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"supervisor/common"
+	"supervisor/common/packet"
 
 	"github.com/spf13/cobra"
 )
@@ -51,7 +51,7 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
-			filter := common.ListFilter{
+			filter := packet.ListFilter{
 				IdFilter:             idFilter,
 				NameFilter:           nameFilter,
 				XorgDisplayFilter:    xorgFilter,

@@ -2,31 +2,31 @@ package backend
 
 import (
 	"net"
-	"supervisor/common"
+	"supervisor/common/packet"
 )
 
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 	messages := backendState.messages
 
 	messages.lock.Lock()
-	response := make(common.LogResponseBody, len(messages.messages))
+	response := make(packet.LogResponseBody, len(messages.messages))
 	for i, message := range messages.messages {
 		response[i] = message.String()
 	}
 	messages.lock.Unlock()
 
-	packet, err := common.EncodeLogResponsePacket(response)
+	reponsePacket, err := packet.EncodeLogResponsePacket(response)
 	if err != nil {
 		return err
 	}
 
-	return common.SendPacket(frontendConnection, packet)
+	return packet.SendPacket(frontendConnection, reponsePacket)
 }
 
-func CmdList(backendState *BackendState, frontendConnection net.Conn, request common.ListBody) error {
+func CmdList(backendState *BackendState, frontendConnection net.Conn, request packet.ListBody) error {
 	scheduler := &backendState.scheduler
 
-	response := make(common.ListResponseBody, 0)
+	response := make(packet.ListResponseBody, 0)
 	appendTask := func(task *Task) {
 		stdout, err := task.ReadLastStdout()
 		hasStdout := true
@@ -34,7 +34,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 			hasStdout = false
 		}
 
-		item := common.ListResponseBodyItem{
+		item := packet.ListResponseBodyItem{
 			Id:                     task.Computed.Id,
 			Cmdline:                task.Cmdline,
 			Cwd:                    task.Cwd,
@@ -107,15 +107,15 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request co
 
 	scheduler.lock.Unlock()
 
-	packet, err := common.EncodeListResponsePacket(response)
+	reponsePacket, err := packet.EncodeListResponsePacket(response)
 	if err != nil {
 		return err
 	}
 
-	return common.SendPacket(frontendConnection, packet)
+	return packet.SendPacket(frontendConnection, reponsePacket)
 }
 
-func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request common.ScheduleBody) error {
+func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleBody) error {
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -130,58 +130,58 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	switch TryScheduleTask(&task, backendState) {
 	case ScheduleResultSuccess:
 		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
-		responseStatus = common.ScheduleResponseSuccess
+		responseStatus = packet.ScheduleResponseSuccess
 	case ScheduleResultAlreadyRunning:
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
-		responseStatus = common.ScheduleResponseAlreadyRunning
+		responseStatus = packet.ScheduleResponseAlreadyRunning
 	case ScheduleResultNameDisplayAlreadyRunning:
 		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on %v display", task.FriendlyName, task.ComputeDisplayLabel())
-		responseStatus = common.ScheduleResponseNameDisplayAlreadyRunning
+		responseStatus = packet.ScheduleResponseNameDisplayAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		responseStatus = common.ScheduleResponseInvalidDisplay
+		responseStatus = packet.ScheduleResponseInvalidDisplay
 	default:
 		// Shouldn't happen, but let's handle it gracefully
 		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
-		responseStatus = common.ScheduleResponseUnknown
+		responseStatus = packet.ScheduleResponseUnknown
 	}
 
-	response := common.ScheduleResponseBody{
+	response := packet.ScheduleResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
 		LogFile: task.Computed.OutFilePath,
 	}
 
-	packet, err := common.EncodeScheduleResponsePacket(response)
+	responsePacket, err := packet.EncodeScheduleResponsePacket(response)
 	if err != nil {
 		return err
 	}
 
-	return common.SendPacket(frontendConnection, packet)
+	return packet.SendPacket(frontendConnection, responsePacket)
 }
 
 func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn, taskId int) error {
 	scheduler := &backendState.scheduler
 
-	var response common.QueryTaskActiveResponseBody
+	var response packet.QueryTaskActiveResponseBody
 
 	scheduler.lock.Lock()
 	if taskId < scheduler.currentId {
-		response = common.QueryTaskActiveResponseBodyInactive
+		response = packet.QueryTaskActiveResponseBodyInactive
 		for _, task := range scheduler.tasks {
 			if task.Computed.Id == taskId && !task.Dynamic.IsDeactivated {
-				response = common.QueryTaskActiveResponseBodyActive
+				response = packet.QueryTaskActiveResponseBodyActive
 			}
 		}
 	} else {
-		response = common.QueryTaskActiveResponseInvalidTask
+		response = packet.QueryTaskActiveResponseInvalidTask
 	}
 	scheduler.lock.Unlock()
 
-	packet, err := common.EncodeQueryTaskActiveResponsePacket(response)
+	responsePacket, err := packet.EncodeQueryTaskActiveResponsePacket(response)
 	if err != nil {
 		return err
 	}
 
-	return common.SendPacket(frontendConnection, packet)
+	return packet.SendPacket(frontendConnection, responsePacket)
 }

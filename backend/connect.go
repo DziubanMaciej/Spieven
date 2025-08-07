@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"net"
 	"supervisor/common"
+	"supervisor/common/packet"
 )
 
 func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
-	packet, err := common.ReceivePacket(connection)
+	requestPacket, err := packet.ReceivePacket(connection)
 	if err != nil {
 		return err
 	}
 
-	handshakeValue, err := common.DecodeHandshakePacket(packet)
+	handshakeValue, err := packet.DecodeHandshakePacket(requestPacket)
 	if err != nil {
 		return err
 	}
@@ -43,14 +44,14 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 
 	// Handle any packets that are sent until connection is closed
 	for {
-		packet, err := common.ReceivePacket(connection)
+		requestPacket, err := packet.ReceivePacket(connection)
 		if err != nil {
 			return
 		}
 
-		switch packet.Id {
-		case common.PacketIdLog:
-			err := common.DecodeLogPacket(packet)
+		switch requestPacket.Id {
+		case packet.PacketIdLog:
+			err := packet.DecodeLogPacket(requestPacket)
 			if err != nil {
 				return
 			}
@@ -58,8 +59,8 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case common.PacketIdList:
-			request, err := common.DecodeListPacket(packet)
+		case packet.PacketIdList:
+			request, err := packet.DecodeListPacket(requestPacket)
 			if err != nil {
 				return
 			}
@@ -67,8 +68,8 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case common.PacketIdSchedule:
-			task, err := common.DecodeSchedulePacket(packet)
+		case packet.PacketIdSchedule:
+			task, err := packet.DecodeSchedulePacket(requestPacket)
 			if err != nil {
 				return
 			}
@@ -76,8 +77,8 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case common.PacketIdQueryTaskActive:
-			taskId, err := common.DecodeQueryTaskActivePacket(packet)
+		case packet.PacketIdQueryTaskActive:
+			taskId, err := packet.DecodeQueryTaskActivePacket(requestPacket)
 			if err != nil {
 				return
 			}

@@ -6,29 +6,29 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"supervisor/common"
+	"supervisor/common/packet"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 func CmdLog(backendConnection net.Conn) error {
-	requestPacket, err := common.EncodeLogPacket()
+	requestPacket, err := packet.EncodeLogPacket()
 	if err != nil {
 		return err
 	}
 
-	err = common.SendPacket(backendConnection, requestPacket)
+	err = packet.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return err
 	}
 
-	responsePacket, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := packet.ReceivePacket(backendConnection)
 	if err != nil {
 		return err
 	}
 
-	response, err := common.DecodeLogResponsePacket(responsePacket)
+	response, err := packet.DecodeLogResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}
@@ -40,28 +40,28 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeactivated bool, jsonOutput bool) error {
-	request := common.ListBody{
+func CmdList(backendConnection net.Conn, filter packet.ListFilter, includeDeactivated bool, jsonOutput bool) error {
+	request := packet.ListBody{
 		Filter:             filter,
 		IncludeDeactivated: includeDeactivated,
 	}
 
-	requestPacket, err := common.EncodeListPacket(request)
+	requestPacket, err := packet.EncodeListPacket(request)
 	if err != nil {
 		return err
 	}
 
-	err = common.SendPacket(backendConnection, requestPacket)
+	err = packet.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return err
 	}
 
-	responsePacket, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := packet.ReceivePacket(backendConnection)
 	if err != nil {
 		return err
 	}
 
-	response, err := common.DecodeListResponsePacket(responsePacket)
+	response, err := packet.DecodeListResponsePacket(responsePacket)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeacti
 	return nil
 }
 
-func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool) (*common.ScheduleResponseBody, error) {
+func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool) (*packet.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -122,7 +122,7 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		friendlyName = args[0]
 	}
 
-	body := common.ScheduleBody{
+	body := packet.ScheduleBody{
 		Cmdline:       args,
 		Cwd:           cwd,
 		Env:           os.Environ(),
@@ -136,38 +136,38 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		return nil, err
 	}
 
-	requestPacket, err := common.EncodeSchedulePacket(body)
+	requestPacket, err := packet.EncodeSchedulePacket(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = common.SendPacket(backendConnection, requestPacket)
+	err = packet.SendPacket(backendConnection, requestPacket)
 	if err != nil {
 		return nil, err
 	}
 
-	responsePacket, err := common.ReceivePacket(backendConnection)
+	responsePacket, err := packet.ReceivePacket(backendConnection)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := common.DecodeScheduleResponsePacket(responsePacket)
+	response, err := packet.DecodeScheduleResponsePacket(responsePacket)
 	if err != nil {
 		return nil, err
 	}
 
 	switch response.Status {
-	case common.ScheduleResponseSuccess:
+	case packet.ScheduleResponseSuccess:
 		fmt.Println("Scheduled task")
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
-	case common.ScheduleResponseAlreadyRunning:
+	case packet.ScheduleResponseAlreadyRunning:
 		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
 		return nil, err
-	case common.ScheduleResponseNameDisplayAlreadyRunning:
+	case packet.ScheduleResponseNameDisplayAlreadyRunning:
 		err = fmt.Errorf("task named %v is already running on current display", friendlyName)
 		return nil, err
-	case common.ScheduleResponseInvalidDisplay:
+	case packet.ScheduleResponseInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err
 	default:
@@ -178,28 +178,28 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
-		filter := common.ListFilter{IdFilter: taskId}
-		request := common.ListBody{
+		filter := packet.ListFilter{IdFilter: taskId}
+		request := packet.ListBody{
 			Filter:             filter,
 			IncludeDeactivated: true,
 		}
 
-		requestPacket, err := common.EncodeListPacket(request)
+		requestPacket, err := packet.EncodeListPacket(request)
 		if err != nil {
 			return "", err
 		}
 
-		err = common.SendPacket(backendConnection, requestPacket)
+		err = packet.SendPacket(backendConnection, requestPacket)
 		if err != nil {
 			return "", err
 		}
 
-		responsePacket, err := common.ReceivePacket(backendConnection)
+		responsePacket, err := packet.ReceivePacket(backendConnection)
 		if err != nil {
 			return "", err
 		}
 
-		response, err := common.DecodeListResponsePacket(responsePacket)
+		response, err := packet.DecodeListResponsePacket(responsePacket)
 		if err != nil {
 			return "", err
 		}
@@ -215,32 +215,32 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	}
 
 	checkTaskActiveStatus := func() (bool, error) {
-		requestPacket, err := common.EncodeQueryTaskActivePacket(taskId)
+		requestPacket, err := packet.EncodeQueryTaskActivePacket(taskId)
 		if err != nil {
 			return false, err
 		}
 
-		err = common.SendPacket(backendConnection, requestPacket)
+		err = packet.SendPacket(backendConnection, requestPacket)
 		if err != nil {
 			return false, err
 		}
 
-		responsePacket, err := common.ReceivePacket(backendConnection)
+		responsePacket, err := packet.ReceivePacket(backendConnection)
 		if err != nil {
 			return false, err
 		}
 
-		response, err := common.DecodeQueryTaskActiveResponsePacket(responsePacket)
+		response, err := packet.DecodeQueryTaskActiveResponsePacket(responsePacket)
 		if err != nil {
 			return false, err
 		}
 
 		switch response {
-		case common.QueryTaskActiveResponseBodyActive:
+		case packet.QueryTaskActiveResponseBodyActive:
 			return true, nil
-		case common.QueryTaskActiveResponseBodyInactive:
+		case packet.QueryTaskActiveResponseBodyInactive:
 			return false, nil
-		case common.QueryTaskActiveResponseInvalidTask:
+		case packet.QueryTaskActiveResponseInvalidTask:
 			return false, errors.New("invalid task ID sent to backend")
 		default:
 			return false, errors.New("unknown backend error")

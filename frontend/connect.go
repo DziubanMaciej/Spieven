@@ -3,6 +3,7 @@ package frontend
 import (
 	"net"
 	"supervisor/common"
+	"supervisor/common/packet"
 )
 
 func ConnectToBackend() (net.Conn, error) {
@@ -23,13 +24,13 @@ func ConnectToBackend() (net.Conn, error) {
 			return nil, err
 		}
 
-		packet, err := common.EncodeHandshakePacket(handshakeValue)
+		requestPacket, err := packet.EncodeHandshakePacket(handshakeValue)
 		if err != nil {
 			connection.Close()
 			return nil, err
 		}
 
-		err = common.SendPacket(connection, packet)
+		err = packet.SendPacket(connection, requestPacket)
 		if err != nil {
 			connection.Close()
 			return nil, err
