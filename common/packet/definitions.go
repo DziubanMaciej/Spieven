@@ -2,8 +2,67 @@ package packet
 
 import (
 	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"io"
 )
+
+type PacketId byte
+
+const (
+	// Frontend->Backend commands
+	PacketIdHandshake PacketId = iota
+	PacketIdSchedule
+	PacketIdList
+	PacketIdLog
+	PacketIdQueryTaskActive
+
+	// Backend->Frontend commands
+	PacketIdScheduleResponse
+	PacketIdListResponse
+	PacketIdLogResponse
+	PacketIdQueryTaskActiveResponse
+)
+
+type Packet struct {
+	Id     PacketId
+	Length uint32
+	Data   []byte
+}
+
+func EncodePacket(PacketId PacketId, data any) (Packet, error) {
+	var result Packet
+	var serializedData []byte
+	var err error
+
+	if data != nil {
+		serializedData, err = json.Marshal(data)
+		if err != nil {
+			return result, err
+		}
+	}
+
+	result.Id = PacketId
+	result.Data = serializedData
+	result.Length = uint32(len(result.Data))
+
+	return result, err
+}
+
+func DecodePacket(packet Packet, expectedPacketId PacketId, data any) error {
+	if expectedPacketId != packet.Id {
+		return fmt.Errorf("invalid PacketId")
+	}
+
+	if data != nil {
+		return json.Unmarshal(packet.Data, data)
+	} else {
+		if packet.Length != 0 {
+			return fmt.Errorf("unexpected non-zero length for data-less packet")
+		}
+		return nil
+	}
+}
 
 func SendPacket(writer io.Writer, packet Packet) error {
 	var bytes []byte
