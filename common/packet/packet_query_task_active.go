@@ -1,10 +1,12 @@
 package packet
 
-func EncodeQueryTaskActivePacket(body int) (Packet, error) {
+type QueryTaskActiveRequestBody int
+
+func EncodeQueryTaskActivePacket(body QueryTaskActiveRequestBody) (Packet, error) {
 	return EncodePacket(PacketIdQueryTaskActive, body)
 }
 
-func DecodeQueryTaskActivePacket(packet Packet) (result int, err error) {
+func DecodeQueryTaskActivePacket(packet Packet) (result QueryTaskActiveRequestBody, err error) {
 	err = DecodePacket(packet, PacketIdQueryTaskActive, &result)
 	return
 }

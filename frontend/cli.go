@@ -51,7 +51,7 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
-			filter := packet.ListFilter{
+			filter := packet.ListRequestBodyFilter{
 				IdFilter:             idFilter,
 				NameFilter:           nameFilter,
 				XorgDisplayFilter:    xorgFilter,

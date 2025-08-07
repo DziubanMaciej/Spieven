@@ -24,7 +24,7 @@ func ConnectToBackend() (net.Conn, error) {
 			return nil, err
 		}
 
-		requestPacket, err := packet.EncodeHandshakePacket(handshakeValue)
+		requestPacket, err := packet.EncodeHandshakePacket(packet.HandshakeRequestBody(handshakeValue))
 		if err != nil {
 			connection.Close()
 			return nil, err

@@ -25,7 +25,7 @@ func ValidateStrings(val []string, stringName string) error {
 	return nil
 }
 
-func ValidateScheduleBody(val *packet.ScheduleBody) error {
+func ValidateScheduleRequestBody(val *packet.ScheduleRequestBody) error {
 	if err := ValidateString(val.Cwd, "field cwd"); err != nil {
 		return err
 	}

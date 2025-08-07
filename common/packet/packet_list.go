@@ -2,7 +2,7 @@ package packet
 
 import "math"
 
-type ListFilter struct {
+type ListRequestBodyFilter struct {
 	IdFilter             int
 	NameFilter           string
 	XorgDisplayFilter    string
@@ -15,7 +15,7 @@ type ListFilter struct {
 	HasAnyFilter            bool `json:"-"`
 }
 
-func (filter *ListFilter) Derive() {
+func (filter *ListRequestBodyFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
 	filter.HasNameFilter = filter.NameFilter != ""
 	filter.HasXorgDisplayFilter = filter.XorgDisplayFilter != ""
@@ -23,16 +23,16 @@ func (filter *ListFilter) Derive() {
 	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasXorgDisplayFilter || filter.HasWaylandDisplayFilter
 }
 
-type ListBody struct {
-	Filter             ListFilter
+type ListRequestBody struct {
+	Filter             ListRequestBodyFilter
 	IncludeDeactivated bool
 }
 
-func EncodeListPacket(body ListBody) (Packet, error) {
+func EncodeListPacket(body ListRequestBody) (Packet, error) {
 	return EncodePacket(PacketIdList, body)
 }
 
-func DecodeListPacket(packet Packet) (body ListBody, err error) {
+func DecodeListPacket(packet Packet) (body ListRequestBody, err error) {
 	err = DecodePacket(packet, PacketIdList, &body)
 	return
 }

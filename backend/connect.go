@@ -13,10 +13,11 @@ func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
 		return err
 	}
 
-	handshakeValue, err := packet.DecodeHandshakePacket(requestPacket)
+	request, err := packet.DecodeHandshakePacket(requestPacket)
 	if err != nil {
 		return err
 	}
+	handshakeValue := uint64(request)
 
 	if backendState.handshakeValue == handshakeValue {
 		return fmt.Errorf("invalid handshake value: expected %v, got %v", backendState.handshakeValue, handshakeValue)
@@ -69,20 +70,20 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		case packet.PacketIdSchedule:
-			task, err := packet.DecodeSchedulePacket(requestPacket)
+			request, err := packet.DecodeSchedulePacket(requestPacket)
 			if err != nil {
 				return
 			}
-			err = CmdSchedule(backendState, connection, task)
+			err = CmdSchedule(backendState, connection, request)
 			if err != nil {
 				return
 			}
 		case packet.PacketIdQueryTaskActive:
-			taskId, err := packet.DecodeQueryTaskActivePacket(requestPacket)
+			request, err := packet.DecodeQueryTaskActivePacket(requestPacket)
 			if err != nil {
 				return
 			}
-			err = CmdQueryTaskActive(backendState, connection, taskId)
+			err = CmdQueryTaskActive(backendState, connection, request)
 			if err != nil {
 				return
 			}

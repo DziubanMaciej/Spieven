@@ -23,7 +23,7 @@ func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 	return packet.SendPacket(frontendConnection, reponsePacket)
 }
 
-func CmdList(backendState *BackendState, frontendConnection net.Conn, request packet.ListBody) error {
+func CmdList(backendState *BackendState, frontendConnection net.Conn, request packet.ListRequestBody) error {
 	scheduler := &backendState.scheduler
 
 	response := make(packet.ListResponseBody, 0)
@@ -115,7 +115,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	return packet.SendPacket(frontendConnection, reponsePacket)
 }
 
-func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleBody) error {
+func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleRequestBody) error {
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -126,24 +126,24 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		CaptureStdout:         request.CaptureStdout,
 	}
 
-	var responseStatus byte
+	var responseStatus packet.ScheduleResponseStatus
 	switch TryScheduleTask(&task, backendState) {
 	case ScheduleResultSuccess:
 		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
-		responseStatus = packet.ScheduleResponseSuccess
+		responseStatus = packet.ScheduleResponseStatusSuccess
 	case ScheduleResultAlreadyRunning:
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
-		responseStatus = packet.ScheduleResponseAlreadyRunning
+		responseStatus = packet.ScheduleResponseStatusAlreadyRunning
 	case ScheduleResultNameDisplayAlreadyRunning:
 		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on %v display", task.FriendlyName, task.ComputeDisplayLabel())
-		responseStatus = packet.ScheduleResponseNameDisplayAlreadyRunning
+		responseStatus = packet.ScheduleResponseStatusNameDisplayAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		responseStatus = packet.ScheduleResponseInvalidDisplay
+		responseStatus = packet.ScheduleResponseStatusInvalidDisplay
 	default:
 		// Shouldn't happen, but let's handle it gracefully
 		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
-		responseStatus = packet.ScheduleResponseUnknown
+		responseStatus = packet.ScheduleResponseStatusUnknown
 	}
 
 	response := packet.ScheduleResponseBody{
@@ -160,8 +160,9 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
 
-func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn, taskId int) error {
+func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn, request packet.QueryTaskActiveRequestBody) error {
 	scheduler := &backendState.scheduler
+	taskId := int(request)
 
 	var response packet.QueryTaskActiveResponseBody
 

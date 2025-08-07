@@ -40,8 +40,8 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, filter packet.ListFilter, includeDeactivated bool, jsonOutput bool) error {
-	request := packet.ListBody{
+func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, includeDeactivated bool, jsonOutput bool) error {
+	request := packet.ListRequestBody{
 		Filter:             filter,
 		IncludeDeactivated: includeDeactivated,
 	}
@@ -122,7 +122,7 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		friendlyName = args[0]
 	}
 
-	body := packet.ScheduleBody{
+	body := packet.ScheduleRequestBody{
 		Cmdline:       args,
 		Cwd:           cwd,
 		Env:           os.Environ(),
@@ -131,7 +131,7 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		CaptureStdout: captureStdout,
 	}
 
-	err = ValidateScheduleBody(&body)
+	err = ValidateScheduleRequestBody(&body)
 	if err != nil {
 		return nil, err
 	}
@@ -157,17 +157,17 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	}
 
 	switch response.Status {
-	case packet.ScheduleResponseSuccess:
+	case packet.ScheduleResponseStatusSuccess:
 		fmt.Println("Scheduled task")
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
-	case packet.ScheduleResponseAlreadyRunning:
+	case packet.ScheduleResponseStatusAlreadyRunning:
 		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
 		return nil, err
-	case packet.ScheduleResponseNameDisplayAlreadyRunning:
+	case packet.ScheduleResponseStatusNameDisplayAlreadyRunning:
 		err = fmt.Errorf("task named %v is already running on current display", friendlyName)
 		return nil, err
-	case packet.ScheduleResponseInvalidDisplay:
+	case packet.ScheduleResponseStatusInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err
 	default:
@@ -178,8 +178,8 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
-		filter := packet.ListFilter{IdFilter: taskId}
-		request := packet.ListBody{
+		filter := packet.ListRequestBodyFilter{IdFilter: taskId}
+		request := packet.ListRequestBody{
 			Filter:             filter,
 			IncludeDeactivated: true,
 		}
@@ -215,7 +215,7 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	}
 
 	checkTaskActiveStatus := func() (bool, error) {
-		requestPacket, err := packet.EncodeQueryTaskActivePacket(taskId)
+		requestPacket, err := packet.EncodeQueryTaskActivePacket(packet.QueryTaskActiveRequestBody(taskId))
 		if err != nil {
 			return false, err
 		}

@@ -1,6 +1,6 @@
 package packet
 
-type ScheduleBody struct {
+type ScheduleRequestBody struct {
 	Cmdline       []string
 	Cwd           string
 	Env           []string
@@ -9,25 +9,27 @@ type ScheduleBody struct {
 	CaptureStdout bool
 }
 
-func EncodeSchedulePacket(data ScheduleBody) (Packet, error) {
+func EncodeSchedulePacket(data ScheduleRequestBody) (Packet, error) {
 	return EncodePacket(PacketIdSchedule, data)
 }
 
-func DecodeSchedulePacket(packet Packet) (result ScheduleBody, err error) {
+func DecodeSchedulePacket(packet Packet) (result ScheduleRequestBody, err error) {
 	err = DecodePacket(packet, PacketIdSchedule, &result)
 	return
 }
 
+type ScheduleResponseStatus byte
+
 const (
-	ScheduleResponseSuccess byte = iota
-	ScheduleResponseAlreadyRunning
-	ScheduleResponseNameDisplayAlreadyRunning
-	ScheduleResponseInvalidDisplay
-	ScheduleResponseUnknown
+	ScheduleResponseStatusSuccess ScheduleResponseStatus = iota
+	ScheduleResponseStatusAlreadyRunning
+	ScheduleResponseStatusNameDisplayAlreadyRunning
+	ScheduleResponseStatusInvalidDisplay
+	ScheduleResponseStatusUnknown
 )
 
 type ScheduleResponseBody struct {
-	Status  byte
+	Status  ScheduleResponseStatus
 	Id      int
 	LogFile string
 }
