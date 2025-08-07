@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 )
@@ -115,22 +114,24 @@ func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, e
 }
 
 type ListFilter struct {
-	IdFilter   int
-	NameFilter string
+	IdFilter             int
+	NameFilter           string
+	XorgDisplayFilter    string
+	WaylandDisplayFilter string
 
-	HasIdFilter     bool
-	HasNameFilter   bool
-	HasUniqueFilter bool `json:"-"`
+	HasIdFilter             bool `json:"-"`
+	HasNameFilter           bool `json:"-"`
+	HasXorgDisplayFilter    bool `json:"-"`
+	HasWaylandDisplayFilter bool `json:"-"`
+	HasAnyFilter            bool `json:"-"`
 }
 
-func (filter *ListFilter) Derive() error {
+func (filter *ListFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
 	filter.HasNameFilter = filter.NameFilter != ""
-	filter.HasUniqueFilter = filter.HasIdFilter || filter.HasNameFilter
-	if filter.HasIdFilter && filter.HasNameFilter {
-		return errors.New("more than one unique filters found")
-	}
-	return nil
+	filter.HasXorgDisplayFilter = filter.XorgDisplayFilter != ""
+	filter.HasWaylandDisplayFilter = filter.WaylandDisplayFilter != ""
+	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasXorgDisplayFilter || filter.HasWaylandDisplayFilter
 }
 
 type ListBody struct {

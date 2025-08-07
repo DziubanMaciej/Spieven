@@ -66,30 +66,11 @@ func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeacti
 		return err
 	}
 
-	if filter.HasUniqueFilter {
-		// We requested to find a specific task by either id or name. We're expecting to find exactly one task.
-		switch len(response) {
-		case 0:
-			return errors.New("task not found")
-		case 1:
-		default:
-			if filter.HasNameFilter {
-				var task *common.ListResponseBodyItem
-				for _, t := range response {
-					if task == nil || t.Id > task.Id {
-						task = &t
-					}
-				}
-				response = []common.ListResponseBodyItem{*task}
-			} else {
-				return errors.New("multiple tasks found, this is unexpected")
-			}
-		}
-	} else {
-		// We can get many tasks
-		if len(response) == 0 {
-			fmt.Println("No tasks found")
-			return nil
+	if len(response) == 0 {
+		if filter.HasAnyFilter {
+			return errors.New("no tasks match the requested criteria")
+		} else {
+			return errors.New("no tasks found")
 		}
 	}
 

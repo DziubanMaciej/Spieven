@@ -35,7 +35,15 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
-			includeDeactivated, err := cmd.Flags().GetBool("includeDeactivated")
+			xorgFilter, err := cmd.Flags().GetString("xorg-display")
+			if err != nil {
+				return err
+			}
+			waylandFilter, err := cmd.Flags().GetString("wayland-display")
+			if err != nil {
+				return err
+			}
+			includeDeactivated, err := cmd.Flags().GetBool("include-deactivated")
 			if err != nil {
 				return err
 			}
@@ -44,12 +52,12 @@ func CreateCliCommands() []*cobra.Command {
 				return err
 			}
 			filter := common.ListFilter{
-				IdFilter:   idFilter,
-				NameFilter: nameFilter,
+				IdFilter:             idFilter,
+				NameFilter:           nameFilter,
+				XorgDisplayFilter:    xorgFilter,
+				WaylandDisplayFilter: waylandFilter,
 			}
-			if err := filter.Derive(); err != nil {
-				return err
-			}
+			filter.Derive()
 
 			connection, err := ConnectToBackend()
 			if err == nil {
@@ -61,7 +69,9 @@ func CreateCliCommands() []*cobra.Command {
 	}
 	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
 	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
-	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
+	listCmd.Flags().StringP("xorg-display", "x", "", "Filter tasks by xorg display")
+	listCmd.Flags().StringP("wayland-display", "w", "", "Filter tasks by wayland display")
+	listCmd.Flags().BoolP("include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
 
 	scheduleCmd := &cobra.Command{
