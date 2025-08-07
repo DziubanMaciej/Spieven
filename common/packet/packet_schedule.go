@@ -7,6 +7,8 @@ type ScheduleRequestBody struct {
 	UserIndex     int
 	FriendlyName  string
 	CaptureStdout bool
+	// TODO add MaxSubsequentFailures int (-1 for no limit)
+	// TODO add interval between runs
 }
 
 func EncodeSchedulePacket(data ScheduleRequestBody) (Packet, error) {

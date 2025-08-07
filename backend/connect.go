@@ -100,6 +100,7 @@ func RunServer(frequentTrim bool) error {
 	if err != nil {
 		return err
 	}
+	// TODO unset all display-specific envs
 
 	// Calculate hash used for verifying frontend requests
 	handshakeValue, err := common.CalculateSpievenFileHash()
@@ -135,6 +136,7 @@ func RunServer(frequentTrim bool) error {
 			}
 			break
 		}
+		// TODO validate request came from local host, maybe add flag to allow remote connections
 		backendState.StartGoroutine(func() {
 			HandleConnection(backendState, connection)
 		})

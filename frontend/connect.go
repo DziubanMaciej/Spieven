@@ -14,7 +14,7 @@ func ConnectToBackend() (net.Conn, error) {
 
 	connection, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err != nil {
-		// TODO start the backend and disown it
+		// TODO start the backend and disown it. Try connecting for 1 second, then return error.
 		return nil, err
 	}
 

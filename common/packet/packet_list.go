@@ -53,6 +53,7 @@ type ListResponseBodyItem struct {
 	LastExitValue          int
 	LastStdout             string
 	HasLastStdout          bool
+	// TODO include display information
 }
 type ListResponseBody []ListResponseBodyItem
 

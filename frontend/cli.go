@@ -73,8 +73,10 @@ func CreateCliCommands() []*cobra.Command {
 	listCmd.Flags().StringP("wayland-display", "w", "", "Filter tasks by wayland display")
 	listCmd.Flags().BoolP("include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
+	// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found
 
 	scheduleCmd := &cobra.Command{
+		// TODO add -- separator to allow passing dash args as a cmdline to run
 		Use:   "schedule command [args...]",
 		Short: "Schedule a new task",
 		Args:  cobra.MinimumNArgs(1),
@@ -137,6 +139,12 @@ func CreateCliCommands() []*cobra.Command {
 			return err
 		},
 	}
+
+	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
+
+	// TODO add check command to see whether the server is running and responds correctly
+
+	// TODO add refresh command. Refresh all when no arg, allow filters like list.
 
 	return []*cobra.Command{
 		logCmd,

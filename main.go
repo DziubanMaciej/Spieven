@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	// TODO refactor cmdline options to use kebab-case instead of camelCase
 	rootCmd := &cobra.Command{
 		Use:          "Spieven",
 		Short:        "Spieven is a process supervisor for Linux",
