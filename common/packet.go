@@ -94,6 +94,7 @@ func DecodeSchedulePacket(packet Packet) (result ScheduleBody, err error) {
 const (
 	ScheduleResponseSuccess byte = iota
 	ScheduleResponseAlreadyRunning
+	ScheduleResponseNameDisplayAlreadyRunning
 	ScheduleResponseInvalidDisplay
 	ScheduleResponseUnknown
 )

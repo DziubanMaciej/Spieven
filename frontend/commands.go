@@ -183,6 +183,9 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	case common.ScheduleResponseAlreadyRunning:
 		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
 		return nil, err
+	case common.ScheduleResponseNameDisplayAlreadyRunning:
+		err = fmt.Errorf("task named %v is already running on current display", friendlyName)
+		return nil, err
 	case common.ScheduleResponseInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err

@@ -122,9 +122,12 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	case ScheduleResultAlreadyRunning:
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
 		responseStatus = common.ScheduleResponseAlreadyRunning
+	case ScheduleResultNameDisplayAlreadyRunning:
+		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on %v display", task.FriendlyName, task.ComputeDisplayLabel())
+		responseStatus = common.ScheduleResponseNameDisplayAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		responseStatus = common.ScheduleResponseAlreadyRunning
+		responseStatus = common.ScheduleResponseInvalidDisplay
 	default:
 		// Shouldn't happen, but let's handle it gracefully
 		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")

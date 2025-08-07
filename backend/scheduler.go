@@ -100,6 +100,7 @@ type ScheduleResult byte
 const (
 	ScheduleResultSuccess ScheduleResult = iota
 	ScheduleResultAlreadyRunning
+	ScheduleResultNameDisplayAlreadyRunning
 	ScheduleResultInvalidDisplay
 )
 
@@ -112,8 +113,13 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
 	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
 	for _, currTask := range scheduler.tasks {
-		if !currTask.Dynamic.IsDeactivated && currTask.Computed.Hash == newTask.Computed.Hash {
-			return ScheduleResultAlreadyRunning
+		if !currTask.Dynamic.IsDeactivated {
+			if currTask.Computed.Hash == newTask.Computed.Hash {
+				return ScheduleResultAlreadyRunning
+			}
+			if currTask.FriendlyName != "" && currTask.Computed.NameDisplayHash == newTask.Computed.NameDisplayHash {
+				return ScheduleResultNameDisplayAlreadyRunning
+			}
 		}
 	}
 

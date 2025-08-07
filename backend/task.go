@@ -3,6 +3,7 @@ package backend
 import (
 	"errors"
 	"fmt"
+	"hash"
 	"hash/fnv"
 	"os"
 	"strconv"
@@ -32,7 +33,8 @@ type Task struct {
 		DisplayType DisplayType
 		DisplayName string
 
-		Hash int
+		Hash            int
+		NameDisplayHash int
 	}
 
 	Channels struct {
@@ -68,14 +70,20 @@ func (task *Task) Init(id int, outFilePath string) {
 
 	task.Channels.StopChannel = task.CreateStopChannel()
 
-	task.Computed.Hash = task.ComputeHash()
+	task.Computed.Hash, task.Computed.NameDisplayHash = task.ComputeHashes()
 }
 
-func (task *Task) ComputeHash() int {
-	h := fnv.New32a()
-
+func (task *Task) ComputeHashes() (int, int) {
+	var h hash.Hash32
 	writeInt := func(val int) {
 		h.Write([]byte(strconv.Itoa(val)))
+	}
+	writeBool := func(val bool) {
+		if val {
+			writeInt(1)
+		} else {
+			writeInt(0)
+		}
 	}
 	writeString := func(val string) {
 		h.Write([]byte(val))
@@ -86,15 +94,27 @@ func (task *Task) ComputeHash() int {
 		}
 	}
 
+	// This hash includes all parameters passed by the frontend and display information pulled from env
+	h = fnv.New32a()
 	writeStrings(task.Cmdline)
 	writeString(task.Cwd)
 	writeInt(task.MaxSubsequentFailures)
 	writeInt(task.UserIndex)
 	writeString(task.FriendlyName)
+	writeBool(task.CaptureStdout)
 	writeInt(int(task.Computed.DisplayType))
 	writeString(task.Computed.DisplayName)
+	hash1 := int(h.Sum32())
 
-	return int(h.Sum32())
+	// This hash includes user-passed friendly name and display information pulled from env. It ensures
+	// that we only have one task with a given name per display.
+	h = fnv.New32a()
+	writeString(task.FriendlyName)
+	writeInt(int(task.Computed.DisplayType))
+	writeString(task.Computed.DisplayName)
+	hash2 := int(h.Sum32())
+
+	return hash1, hash2
 }
 
 func (task *Task) ComputeDisplay() (DisplayType, string) {
@@ -156,4 +176,17 @@ func (task *Task) ReadLastStdout() (stdout string, err error) {
 	}
 
 	return
+}
+
+func (task *Task) ComputeDisplayLabel() string {
+	switch task.Computed.DisplayType {
+	case DisplayNone:
+		return "headless"
+	case DisplayXorg:
+		return fmt.Sprintf("xorg %v", task.Computed.DisplayName)
+	case DisplayWayland:
+		return fmt.Sprintf("wayland %v", task.Computed.DisplayName)
+	default:
+		return "unknown"
+	}
 }
