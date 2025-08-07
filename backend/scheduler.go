@@ -334,4 +334,9 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		task.Dynamic = shadowDynamicState
 		backendState.scheduler.lock.Unlock()
 	}
+
+	// Update dynamic state in case we broke from the loop
+	backendState.scheduler.lock.Lock()
+	task.Dynamic = shadowDynamicState
+	backendState.scheduler.lock.Unlock()
 }
