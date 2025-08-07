@@ -39,7 +39,7 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
-			displayResult, err := cmd.Flags().GetBool("result")
+			jsonOutput, err := cmd.Flags().GetBool("json")
 			if err != nil {
 				return err
 			}
@@ -54,7 +54,7 @@ func CreateCliCommands() []*cobra.Command {
 			connection, err := ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				err = CmdList(connection, filter, includeDeactivated, displayResult)
+				err = CmdList(connection, filter, includeDeactivated, jsonOutput)
 			}
 			return err
 		},
@@ -62,7 +62,7 @@ func CreateCliCommands() []*cobra.Command {
 	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
 	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
 	listCmd.Flags().BoolP("includeDeactivated", "d", false, "Include deactivated tasks as well as actively running ones")
-	listCmd.Flags().BoolP("result", "r", false, "Display last exit value and stdout of the task. Must be used with either id or name filter.")
+	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
 
 	scheduleCmd := &cobra.Command{
 		Use:   "schedule command [args...]",

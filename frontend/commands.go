@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -39,7 +40,7 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeactivated bool, displayResult bool) error {
+func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeactivated bool, jsonOutput bool) error {
 	request := common.ListBody{
 		Filter:             filter,
 		IncludeDeactivated: includeDeactivated,
@@ -92,17 +93,12 @@ func CmdList(backendConnection net.Conn, filter common.ListFilter, includeDeacti
 		}
 	}
 
-	if displayResult {
-		task := &response[0]
-
-		if task.RunCount == 0 {
+	if jsonOutput {
+		output, err := json.MarshalIndent(response, "", "    ")
+		if err != nil {
 			return errors.New("task has not finished execution yet")
 		}
-		if !task.HasLastStdout {
-			return errors.New("task has no stdout captured. Did you schedule it with --captureStdout flag?")
-		}
-
-		fmt.Printf("%v\n%v", task.LastExitValue, task.LastStdout)
+		fmt.Println(string(output))
 	} else {
 		for i, task := range response {
 			activeStr := "Yes"
