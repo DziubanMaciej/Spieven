@@ -35,11 +35,7 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
-			xorgFilter, err := cmd.Flags().GetString("xorg-display")
-			if err != nil {
-				return err
-			}
-			waylandFilter, err := cmd.Flags().GetString("wayland-display")
+			display, err := cmd.Flags().GetString("display")
 			if err != nil {
 				return err
 			}
@@ -52,10 +48,11 @@ func CreateCliCommands() []*cobra.Command {
 				return err
 			}
 			filter := packet.ListRequestBodyFilter{
-				IdFilter:             idFilter,
-				NameFilter:           nameFilter,
-				XorgDisplayFilter:    xorgFilter,
-				WaylandDisplayFilter: waylandFilter,
+				IdFilter:   idFilter,
+				NameFilter: nameFilter,
+			}
+			if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
+				return err
 			}
 			filter.Derive()
 
@@ -69,8 +66,7 @@ func CreateCliCommands() []*cobra.Command {
 	}
 	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
 	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
-	listCmd.Flags().StringP("xorg-display", "x", "", "Filter tasks by xorg display")
-	listCmd.Flags().StringP("wayland-display", "w", "", "Filter tasks by wayland display")
+	listCmd.Flags().StringP("display", "p", "", "Filter tasks by display. "+packet.DisplaySelectionHelpString)
 	listCmd.Flags().BoolP("include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
 	// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found

@@ -73,17 +73,24 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		prev := selector
 		selector = func(task *Task) bool { return prev(task) && task.FriendlyName == request.Filter.NameFilter }
 	}
-	if request.Filter.HasXorgDisplayFilter {
+	if request.Filter.HasDisplayFilter {
 		prev := selector
-		selector = func(task *Task) bool {
-			return prev(task) && task.Computed.DisplayType == DisplayXorg && task.Computed.DisplayName == request.Filter.XorgDisplayFilter
+
+		switch request.Filter.DisplayFilter.Type {
+		case packet.DisplaySelectionTypeHeadless:
+			selector = func(task *Task) bool { return prev(task) && task.Computed.DisplayType == DisplayNone }
+		case packet.DisplaySelectionTypeXorg:
+			selector = func(task *Task) bool {
+				return prev(task) && task.Computed.DisplayType == DisplayXorg && task.Computed.DisplayName == request.Filter.DisplayFilter.Name
+			}
+		case packet.DisplaySelectionTypeWayland:
+			selector = func(task *Task) bool {
+				return prev(task) && task.Computed.DisplayType == DisplayWayland && task.Computed.DisplayName == request.Filter.DisplayFilter.Name
+			}
+		default:
+			backendState.messages.Add(BackendMessageError, nil, "Invalid display filter type. Ignoring.")
 		}
-	}
-	if request.Filter.HasWaylandDisplayFilter {
-		prev := selector
-		selector = func(task *Task) bool {
-			return prev(task) && task.Computed.DisplayType == DisplayWayland && task.Computed.DisplayName == request.Filter.WaylandDisplayFilter
-		}
+
 	}
 
 	// First look through in-memory list of tasks. Some of them will be active, some can be deactivated,

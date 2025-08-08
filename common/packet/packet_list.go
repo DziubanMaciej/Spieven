@@ -1,26 +1,34 @@
 package packet
 
-import "math"
+import (
+	"math"
+)
+
+type DisplaySelectionType byte
+
+const (
+	DisplaySelectionTypeNone DisplaySelectionType = iota
+	DisplaySelectionTypeHeadless
+	DisplaySelectionTypeXorg
+	DisplaySelectionTypeWayland
+)
 
 type ListRequestBodyFilter struct {
-	IdFilter             int
-	NameFilter           string
-	XorgDisplayFilter    string
-	WaylandDisplayFilter string
+	IdFilter      int
+	NameFilter    string
+	DisplayFilter DisplaySelection
 
-	HasIdFilter             bool `json:"-"`
-	HasNameFilter           bool `json:"-"`
-	HasXorgDisplayFilter    bool `json:"-"`
-	HasWaylandDisplayFilter bool `json:"-"`
-	HasAnyFilter            bool `json:"-"`
+	HasIdFilter      bool `json:"-"`
+	HasNameFilter    bool `json:"-"`
+	HasDisplayFilter bool `json:"-"`
+	HasAnyFilter     bool `json:"-"`
 }
 
 func (filter *ListRequestBodyFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
 	filter.HasNameFilter = filter.NameFilter != ""
-	filter.HasXorgDisplayFilter = filter.XorgDisplayFilter != ""
-	filter.HasWaylandDisplayFilter = filter.WaylandDisplayFilter != ""
-	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasXorgDisplayFilter || filter.HasWaylandDisplayFilter
+	filter.HasDisplayFilter = filter.DisplayFilter.Type != DisplaySelectionTypeNone
+	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasDisplayFilter
 }
 
 type ListRequestBody struct {
