@@ -1,0 +1,11 @@
+package types
+
+type ScheduleResponseStatus byte
+
+const (
+	ScheduleResponseStatusSuccess ScheduleResponseStatus = iota
+	ScheduleResponseStatusAlreadyRunning
+	ScheduleResponseStatusNameDisplayAlreadyRunning
+	ScheduleResponseStatusInvalidDisplay
+	ScheduleResponseStatusUnknown
+)

@@ -23,18 +23,8 @@ func DecodeSchedulePacket(packet Packet) (result ScheduleRequestBody, err error)
 	return
 }
 
-type ScheduleResponseStatus byte
-
-const (
-	ScheduleResponseStatusSuccess ScheduleResponseStatus = iota
-	ScheduleResponseStatusAlreadyRunning
-	ScheduleResponseStatusNameDisplayAlreadyRunning
-	ScheduleResponseStatusInvalidDisplay
-	ScheduleResponseStatusUnknown
-)
-
 type ScheduleResponseBody struct {
-	Status  ScheduleResponseStatus
+	Status  types.ScheduleResponseStatus
 	Id      int
 	LogFile string
 }

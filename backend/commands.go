@@ -3,6 +3,7 @@ package backend
 import (
 	"net"
 	"supervisor/common/packet"
+	"supervisor/common/types"
 )
 
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
@@ -119,30 +120,26 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		Display:               request.Display,
 	}
 
-	var responseStatus packet.ScheduleResponseStatus
-	switch TryScheduleTask(&task, backendState) {
-	case ScheduleResultSuccess:
-		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
-		responseStatus = packet.ScheduleResponseStatusSuccess
-	case ScheduleResultAlreadyRunning:
-		backendState.messages.Add(BackendMessageError, nil, "Task already running")
-		responseStatus = packet.ScheduleResponseStatusAlreadyRunning
-	case ScheduleResultNameDisplayAlreadyRunning:
-		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
-		responseStatus = packet.ScheduleResponseStatusNameDisplayAlreadyRunning
-	case ScheduleResultInvalidDisplay:
-		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
-		responseStatus = packet.ScheduleResponseStatusInvalidDisplay
-	default:
-		// Shouldn't happen, but let's handle it gracefully
-		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
-		responseStatus = packet.ScheduleResponseStatusUnknown
-	}
-
+	responseStatus := TryScheduleTask(&task, backendState)
 	response := packet.ScheduleResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
 		LogFile: task.Computed.OutFilePath,
+	}
+
+	switch responseStatus {
+	case types.ScheduleResponseStatusSuccess:
+		backendState.messages.Add(BackendMessageInfo, &task, "Scheduled task")
+	case types.ScheduleResponseStatusAlreadyRunning:
+		backendState.messages.Add(BackendMessageError, nil, "Task already running")
+	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
+	case types.ScheduleResponseStatusInvalidDisplay:
+		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
+	default:
+		// Shouldn't happen, but let's handle it gracefully
+		backendState.messages.Add(BackendMessageError, nil, "Unknown scheduling error")
+		response.Status = types.ScheduleResponseStatusUnknown
 	}
 
 	responsePacket, err := packet.EncodeScheduleResponsePacket(response)

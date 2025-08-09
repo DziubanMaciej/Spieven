@@ -159,17 +159,17 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 	}
 
 	switch response.Status {
-	case packet.ScheduleResponseStatusSuccess:
+	case types.ScheduleResponseStatusSuccess:
 		fmt.Println("Scheduled task")
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
-	case packet.ScheduleResponseStatusAlreadyRunning:
+	case types.ScheduleResponseStatusAlreadyRunning:
 		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
 		return nil, err
-	case packet.ScheduleResponseStatusNameDisplayAlreadyRunning:
+	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
 		err = fmt.Errorf("task named %v is already running on current display", friendlyName)
 		return nil, err
-	case packet.ScheduleResponseStatusInvalidDisplay:
+	case types.ScheduleResponseStatusInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err
 	default:

@@ -96,16 +96,7 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 	return result
 }
 
-type ScheduleResult byte
-
-const (
-	ScheduleResultSuccess ScheduleResult = iota
-	ScheduleResultAlreadyRunning
-	ScheduleResultNameDisplayAlreadyRunning
-	ScheduleResultInvalidDisplay
-)
-
-func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
+func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
 	scheduler := &backendState.scheduler
 
 	scheduler.lock.Lock()
@@ -116,10 +107,10 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated {
 			if currTask.Computed.Hash == newTask.Computed.Hash {
-				return ScheduleResultAlreadyRunning
+				return types.ScheduleResponseStatusAlreadyRunning
 			}
 			if currTask.FriendlyName != "" && currTask.Computed.NameDisplayHash == newTask.Computed.NameDisplayHash {
-				return ScheduleResultNameDisplayAlreadyRunning
+				return types.ScheduleResponseStatusNameDisplayAlreadyRunning
 			}
 		}
 	}
@@ -130,7 +121,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	case types.DisplaySelectionTypeXorg:
 		_, err := GetXorgDisplay(newTask.Display.Name, backendState)
 		if err != nil {
-			return ScheduleResultInvalidDisplay
+			return types.ScheduleResponseStatusInvalidDisplay
 		}
 	case types.DisplaySelectionTypeWayland:
 		backendState.messages.Add(BackendMessageError, newTask, "Wayland display tracking is not implemented")
@@ -145,7 +136,7 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	backendState.StartGoroutine(func() {
 		ExecuteTask(newTask, backendState)
 	})
-	return ScheduleResultSuccess
+	return types.ScheduleResponseStatusSuccess
 }
 
 func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectionType, displayName string) {
