@@ -41,10 +41,16 @@ func CmdLog(backendConnection net.Conn) error {
 	return nil
 }
 
-func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, includeDeactivated bool, jsonOutput bool) error {
+func CmdList(
+	backendConnection net.Conn,
+	filter packet.ListRequestBodyFilter,
+	includeDeactivated bool,
+	includeDeactivatedAlways bool,
+	jsonOutput bool) error {
 	request := packet.ListRequestBody{
-		Filter:             filter,
-		IncludeDeactivated: includeDeactivated,
+		Filter:                   filter,
+		IncludeDeactivated:       includeDeactivated,
+		IncludeDeactivatedAlways: includeDeactivatedAlways,
 	}
 
 	requestPacket, err := packet.EncodeListPacket(request)

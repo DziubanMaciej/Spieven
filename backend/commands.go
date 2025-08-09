@@ -61,10 +61,6 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	// By default we want to return all of them, but then we compose additional checks depending on
 	// the frontend request.
 	selector := func(task *Task) bool { return true }
-	if !request.IncludeDeactivated {
-		prev := selector
-		selector = func(task *Task) bool { return prev(task) && !task.Dynamic.IsDeactivated }
-	}
 	request.Filter.Derive()
 	if request.Filter.HasIdFilter {
 		prev := selector
@@ -79,23 +75,38 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		selector = func(task *Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
 	}
 
-	// First look through in-memory list of tasks. Some of them will be active, some can be deactivated,
-	// depending on when Trim() was called.
-	for _, task := range scheduler.tasks {
-		if selector(task) {
-			appendTask(task)
+	// Prepare helper functions to list tasks from memory or from disc. The in-memory list can contain both active tasks
+	// and already deactivated tasks that were not yet paged to a file.
+	getTasksFromMemory := func(allowDeactivated bool) {
+		for _, task := range scheduler.tasks {
+			if selector(task) && (allowDeactivated || !task.Dynamic.IsDeactivated) {
+				appendTask(task)
+			}
 		}
 	}
-
-	// If we're interested in deactivated tasks, load them from a file. The selector invocation could be moved into
-	// scheduler to avoid building list of all tasks, but let's not worry about that now.
-	if request.IncludeDeactivated {
+	getTasksFromDeactivatedFile := func() {
 		tasks := scheduler.ReadTrimmedTasks(backendState.messages, backendState.files)
 		for _, task := range tasks {
 			if selector(task) {
 				appendTask(task)
 			}
 		}
+	}
+
+	// Retrieve the tasks while applying the policy from deactivated tasks. When IncludeDeactivatedAlways is set, we
+	// must include deactivated tasks that are either still in memory or where page out to a file. When IncludeDeactivated
+	// is set, we first try to only look at active tasks. If there are no results, then we look at deactivated tasks.
+	if request.IncludeDeactivatedAlways {
+		getTasksFromMemory(true)
+		getTasksFromDeactivatedFile()
+	} else if request.IncludeDeactivated {
+		getTasksFromMemory(false)
+		if len(response) == 0 {
+			getTasksFromMemory(true)
+			getTasksFromDeactivatedFile()
+		}
+	} else {
+		getTasksFromMemory(false)
 	}
 
 	scheduler.lock.Unlock()

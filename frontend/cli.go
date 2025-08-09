@@ -29,11 +29,12 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		var (
-			idFilter           int
-			nameFilter         string
-			display            string
-			includeDeactivated bool
-			jsonOutput         bool
+			idFilter                 int
+			nameFilter               string
+			display                  string
+			includeDeactivated       bool
+			includeDeactivatedAlways bool
+			jsonOutput               bool
 		)
 		cmd := &cobra.Command{
 			Use:   "list",
@@ -51,7 +52,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend()
 				if err == nil {
 					defer connection.Close()
-					err = CmdList(connection, filter, includeDeactivated, jsonOutput)
+					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, jsonOutput)
 				}
 				return err
 			},
@@ -59,10 +60,10 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
 		cmd.Flags().StringVarP(&nameFilter, "name", "n", "", "Filter tasks by friendly name")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
-		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
+		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")
+		cmd.Flags().BoolVarP(&includeDeactivatedAlways, "include-deactivated-always", "D", false, "Include deactivated tasks as well as active ones")
 		cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Display output as json.")
 		commands = append(commands, cmd)
-		// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found
 	}
 
 	{

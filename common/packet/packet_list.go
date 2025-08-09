@@ -24,8 +24,9 @@ func (filter *ListRequestBodyFilter) Derive() {
 }
 
 type ListRequestBody struct {
-	Filter             ListRequestBodyFilter
-	IncludeDeactivated bool
+	Filter                   ListRequestBodyFilter
+	IncludeDeactivated       bool
+	IncludeDeactivatedAlways bool
 }
 
 func EncodeListPacket(body ListRequestBody) (Packet, error) {
