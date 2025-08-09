@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"supervisor/common/packet"
+	"supervisor/common/types"
 
 	"github.com/spf13/cobra"
 )
@@ -66,7 +67,7 @@ func CreateCliCommands() []*cobra.Command {
 	}
 	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
 	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
-	listCmd.Flags().StringP("display", "p", "", "Filter tasks by display. "+packet.DisplaySelectionHelpString)
+	listCmd.Flags().StringP("display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
 	listCmd.Flags().BoolP("include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
 	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
 	// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found
@@ -93,11 +94,19 @@ func CreateCliCommands() []*cobra.Command {
 			if err != nil {
 				return err
 			}
+			display, err := cmd.Flags().GetString("display")
+			if err != nil {
+				return err
+			}
+			var displaySelection types.DisplaySelection
+			if err := displaySelection.ParseDisplaySelection(display); err != nil {
+				return err
+			}
 
 			connection, err := ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				response, err := CmdSchedule(connection, args, userIndex, friendlyName, captureStdout)
+				response, err := CmdSchedule(connection, args, userIndex, friendlyName, captureStdout, displaySelection)
 				if err != nil {
 					return err
 				}
@@ -116,6 +125,7 @@ func CreateCliCommands() []*cobra.Command {
 	scheduleCmd.Flags().StringP("friendlyName", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 	scheduleCmd.Flags().BoolP("captureStdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
+	scheduleCmd.Flags().StringP("display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
 
 	peekCmd := &cobra.Command{
 		Use:   "peek [taskID]",

@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"supervisor/common/packet"
+	"supervisor/common/types"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -108,7 +109,7 @@ func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, in
 	return nil
 }
 
-func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool) (*packet.ScheduleResponseBody, error) {
+func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool, display types.DisplaySelection) (*packet.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -129,6 +130,7 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		UserIndex:     userIndex,
 		FriendlyName:  friendlyName,
 		CaptureStdout: captureStdout,
+		Display:       display,
 	}
 
 	err = ValidateScheduleRequestBody(&body)

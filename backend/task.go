@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"supervisor/common"
+	"supervisor/common/types"
 )
 
 // Task struct describes a command that is scheduled to be running in background. For each Task Spieven creates a
@@ -25,13 +26,12 @@ type Task struct {
 	UserIndex             int
 	FriendlyName          string
 	CaptureStdout         bool
+	Display               types.DisplaySelection
 
 	Computed struct {
 		Id          int
 		OutFilePath string
 		LogLabel    string
-		DisplayType DisplayType
-		DisplayName string
 
 		Hash            int
 		NameDisplayHash int
@@ -54,19 +54,14 @@ type Task struct {
 	_ common.NoCopy
 }
 
-type DisplayType byte
-
-const (
-	DisplayNone DisplayType = iota
-	DisplayXorg
-	DisplayWayland
-)
-
 func (task *Task) Init(id int, outFilePath string) {
 	task.Computed.Id = id
 	task.Computed.OutFilePath = outFilePath
 	task.Computed.LogLabel = task.ComputeLogLabel(id)
-	task.Computed.DisplayType, task.Computed.DisplayName = task.ComputeDisplay()
+	if task.Display.Type == types.DisplaySelectionTypeNone {
+		task.Display = task.ComputeDisplayFromEnv()
+	}
+	// TODO unset envs for display that is not selected
 
 	task.Channels.StopChannel = task.CreateStopChannel()
 
@@ -102,30 +97,30 @@ func (task *Task) ComputeHashes() (int, int) {
 	writeInt(task.UserIndex)
 	writeString(task.FriendlyName)
 	writeBool(task.CaptureStdout)
-	writeInt(int(task.Computed.DisplayType))
-	writeString(task.Computed.DisplayName)
+	writeInt(int(task.Display.Type))
+	writeString(task.Display.Name)
 	hash1 := int(h.Sum32())
 
 	// This hash includes user-passed friendly name and display information pulled from env. It ensures
 	// that we only have one task with a given name per display.
 	h = fnv.New32a()
 	writeString(task.FriendlyName)
-	writeInt(int(task.Computed.DisplayType))
-	writeString(task.Computed.DisplayName)
+	writeInt(int(task.Display.Type))
+	writeString(task.Display.Name)
 	hash2 := int(h.Sum32())
 
 	return hash1, hash2
 }
 
-func (task *Task) ComputeDisplay() (DisplayType, string) {
+func (task *Task) ComputeDisplayFromEnv() types.DisplaySelection {
 	// Search the env variable for display-related settings.
-	var displayVar string
+	var xorgDisplayVar string
 	var waylandDisplayVar string
 	for _, currentVar := range task.Env {
 		parts := strings.SplitN(currentVar, "=", 2)
 		switch parts[0] {
 		case "DISPLAY":
-			displayVar = parts[1]
+			xorgDisplayVar = parts[1]
 		case "WAYLAND_DISPLAY":
 			waylandDisplayVar = parts[1]
 		}
@@ -135,11 +130,20 @@ func (task *Task) ComputeDisplay() (DisplayType, string) {
 	// it could choose either one, e.g. based on argv or some config file. In general we cannot know which one it'll use.
 	// It could even use both. Just prefer Wayland for simplicity.
 	if waylandDisplayVar != "" {
-		return DisplayWayland, waylandDisplayVar
-	} else if displayVar != "" {
-		return DisplayXorg, displayVar
+		return types.DisplaySelection{
+			Type: types.DisplaySelectionTypeWayland,
+			Name: waylandDisplayVar,
+		}
+	} else if xorgDisplayVar != "" {
+		return types.DisplaySelection{
+			Type: types.DisplaySelectionTypeXorg,
+			Name: xorgDisplayVar,
+		}
 	} else {
-		return DisplayNone, ""
+		return types.DisplaySelection{
+			Type: types.DisplaySelectionTypeHeadless,
+			Name: "",
+		}
 	}
 }
 
@@ -176,17 +180,4 @@ func (task *Task) ReadLastStdout() (stdout string, err error) {
 	}
 
 	return
-}
-
-func (task *Task) ComputeDisplayLabel() string {
-	switch task.Computed.DisplayType {
-	case DisplayNone:
-		return "headless"
-	case DisplayXorg:
-		return fmt.Sprintf("xorg %v", task.Computed.DisplayName)
-	case DisplayWayland:
-		return fmt.Sprintf("wayland %v", task.Computed.DisplayName)
-	default:
-		return "unknown"
-	}
 }

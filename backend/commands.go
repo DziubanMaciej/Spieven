@@ -75,22 +75,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	}
 	if request.Filter.HasDisplayFilter {
 		prev := selector
-
-		switch request.Filter.DisplayFilter.Type {
-		case packet.DisplaySelectionTypeHeadless:
-			selector = func(task *Task) bool { return prev(task) && task.Computed.DisplayType == DisplayNone }
-		case packet.DisplaySelectionTypeXorg:
-			selector = func(task *Task) bool {
-				return prev(task) && task.Computed.DisplayType == DisplayXorg && task.Computed.DisplayName == request.Filter.DisplayFilter.Name
-			}
-		case packet.DisplaySelectionTypeWayland:
-			selector = func(task *Task) bool {
-				return prev(task) && task.Computed.DisplayType == DisplayWayland && task.Computed.DisplayName == request.Filter.DisplayFilter.Name
-			}
-		default:
-			backendState.messages.Add(BackendMessageError, nil, "Invalid display filter type. Ignoring.")
-		}
-
+		selector = func(task *Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
 	}
 
 	// First look through in-memory list of tasks. Some of them will be active, some can be deactivated,
@@ -131,6 +116,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		UserIndex:             request.UserIndex,
 		FriendlyName:          request.FriendlyName,
 		CaptureStdout:         request.CaptureStdout,
+		Display:               request.Display,
 	}
 
 	var responseStatus packet.ScheduleResponseStatus
@@ -142,7 +128,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		backendState.messages.Add(BackendMessageError, nil, "Task already running")
 		responseStatus = packet.ScheduleResponseStatusAlreadyRunning
 	case ScheduleResultNameDisplayAlreadyRunning:
-		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on %v display", task.FriendlyName, task.ComputeDisplayLabel())
+		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
 		responseStatus = packet.ScheduleResponseStatusNameDisplayAlreadyRunning
 	case ScheduleResultInvalidDisplay:
 		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")

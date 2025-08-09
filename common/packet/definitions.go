@@ -3,7 +3,6 @@ package packet
 import (
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -117,37 +116,3 @@ func ReceivePacket(reader io.Reader) (Packet, error) {
 
 	return result, nil
 }
-
-type DisplaySelection struct {
-	Type DisplaySelectionType
-	Name string
-}
-
-func (selection *DisplaySelection) ParseDisplaySelection(val string) error {
-	if val == "" {
-		selection.Type = DisplaySelectionTypeNone
-		selection.Name = ""
-		return nil
-	}
-
-	switch val[0] {
-	case 'h':
-		selection.Type = DisplaySelectionTypeHeadless
-		selection.Name = ""
-		return nil
-	case 'x':
-		selection.Type = DisplaySelectionTypeXorg
-	case 'w':
-		selection.Type = DisplaySelectionTypeWayland
-	default:
-		return errors.New("invalid display selection - it must be either headless, xorg or wayland")
-	}
-
-	selection.Name = val[1:]
-	if selection.Name == "" {
-		return errors.New("invalid display selection - it must contain display name")
-	}
-	return nil
-}
-
-const DisplaySelectionHelpString = "Use \"h\" for headless, \"x$DISPLAY\" for xorg or \"w$WAYLAND_DISPLAY\" for wayland."

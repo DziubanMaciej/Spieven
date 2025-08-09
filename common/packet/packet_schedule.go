@@ -1,5 +1,7 @@
 package packet
 
+import "supervisor/common/types"
+
 type ScheduleRequestBody struct {
 	Cmdline       []string
 	Cwd           string
@@ -7,6 +9,7 @@ type ScheduleRequestBody struct {
 	UserIndex     int
 	FriendlyName  string
 	CaptureStdout bool
+	Display       types.DisplaySelection
 	// TODO add MaxSubsequentFailures int (-1 for no limit)
 	// TODO add interval between runs
 }

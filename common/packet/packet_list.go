@@ -2,21 +2,13 @@ package packet
 
 import (
 	"math"
-)
-
-type DisplaySelectionType byte
-
-const (
-	DisplaySelectionTypeNone DisplaySelectionType = iota
-	DisplaySelectionTypeHeadless
-	DisplaySelectionTypeXorg
-	DisplaySelectionTypeWayland
+	"supervisor/common/types"
 )
 
 type ListRequestBodyFilter struct {
 	IdFilter      int
 	NameFilter    string
-	DisplayFilter DisplaySelection
+	DisplayFilter types.DisplaySelection
 
 	HasIdFilter      bool `json:"-"`
 	HasNameFilter    bool `json:"-"`
@@ -27,7 +19,7 @@ type ListRequestBodyFilter struct {
 func (filter *ListRequestBodyFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
 	filter.HasNameFilter = filter.NameFilter != ""
-	filter.HasDisplayFilter = filter.DisplayFilter.Type != DisplaySelectionTypeNone
+	filter.HasDisplayFilter = filter.DisplayFilter.Type != types.DisplaySelectionTypeNone
 	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasDisplayFilter
 }
 

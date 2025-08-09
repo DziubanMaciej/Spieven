@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"supervisor/common"
+	"supervisor/common/types"
 	"syscall"
 
 	"sync"
@@ -91,7 +92,7 @@ func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 		// Display is closed. Stop all tasks using it.
 		backendState.displays.lock.Lock()
 		result.IsDeactivated = true
-		backendState.scheduler.StopTasksByDisplay(DisplayXorg, name)
+		backendState.scheduler.StopTasksByDisplay(types.DisplaySelectionTypeXorg, name)
 		backendState.displays.lock.Unlock()
 	})
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"supervisor/common"
+	"supervisor/common/types"
 	"sync"
 )
 
@@ -124,15 +125,17 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	}
 
 	// Ensure display is correct
-	switch newTask.Computed.DisplayType {
-	case DisplayNone:
-	case DisplayXorg:
-		_, err := GetXorgDisplay(newTask.Computed.DisplayName, backendState)
+	switch newTask.Display.Type {
+	case types.DisplaySelectionTypeHeadless:
+	case types.DisplaySelectionTypeXorg:
+		_, err := GetXorgDisplay(newTask.Display.Name, backendState)
 		if err != nil {
 			return ScheduleResultInvalidDisplay
 		}
+	case types.DisplaySelectionTypeWayland:
+		backendState.messages.Add(BackendMessageError, newTask, "Wayland display tracking is not implemented")
 	default:
-		panic("Not implemented")
+		backendState.messages.Add(BackendMessageError, newTask, "Invalid display type")
 	}
 
 	// Increment id assigned for new tasks.
@@ -145,12 +148,12 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) ScheduleResult {
 	return ScheduleResultSuccess
 }
 
-func (scheduler *Scheduler) StopTasksByDisplay(displayType DisplayType, displayName string) {
+func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectionType, displayName string) {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
 	for _, currTask := range scheduler.tasks {
-		if currTask.Computed.DisplayName == displayName && currTask.Computed.DisplayType == displayType {
+		if currTask.Display.Name == displayName && currTask.Display.Type == displayType {
 			currTask.Channels.StopChannel <- fmt.Sprintf("stopping tasks on display %v", displayName)
 		}
 	}
@@ -225,7 +228,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	logF(LogTask, "  UserIndex: %v", task.UserIndex)
 	logF(LogTask, "  Cmdline: %v", task.Cmdline)
 	logF(LogTask, "  Cwd: %v", task.Cwd)
-	logF(LogTask, "  DisplayType=%v DisplayName=%v", task.Computed.DisplayType, task.Computed.DisplayName)
+	logF(LogTask, "  DisplayType=%v DisplayName=%v", task.Display.Type, task.Display.Name)
 
 	// Execute the main loop until the task becomes deactivated.
 	for !shadowDynamicState.IsDeactivated {
