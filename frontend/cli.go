@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -138,9 +139,24 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		commands = append(commands, cmd)
 	}
 
-	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
+	{
+		cmd := &cobra.Command{
+			Use:   "check",
+			Short: "Checks whether the backend is running and can be connected to",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				connection, err := ConnectToBackend()
+				if err == nil {
+					connection.Close()
+					fmt.Println("backend works correctly")
+					return nil
+				}
+				return errors.New("cannot connect to backend")
+			},
+		}
+		commands = append(commands, cmd)
+	}
 
-	// TODO add check command to see whether the server is running and responds correctly
+	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
 
 	// TODO add refresh command. Refresh all when no arg, allow filters like list.
 
