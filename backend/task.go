@@ -60,7 +60,7 @@ func (task *Task) Init(id int, outFilePath string) {
 	if task.Display.Type == types.DisplaySelectionTypeNone {
 		task.Display = task.ComputeDisplayFromEnv()
 	}
-	// TODO unset envs for display that is not selected
+	common.SetDisplayEnvVarsForSubprocess(task.Display, &task.Env)
 
 	task.Channels.StopChannel = task.CreateStopChannel()
 

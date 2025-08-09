@@ -5,6 +5,7 @@ import (
 	"net"
 	"supervisor/common"
 	"supervisor/common/packet"
+	"supervisor/common/types"
 )
 
 func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
@@ -96,11 +97,12 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 }
 
 func RunServer(frequentTrim bool) error {
+	common.SetDisplayEnvVarsForCurrentProcess(types.DisplaySelection{Type: types.DisplaySelectionTypeHeadless})
+
 	backendState, err := CreateBackendState(frequentTrim)
 	if err != nil {
 		return err
 	}
-	// TODO unset all display-specific envs
 
 	// Calculate hash used for verifying frontend requests
 	handshakeValue, err := common.CalculateSpievenFileHash()

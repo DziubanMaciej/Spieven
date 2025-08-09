@@ -1,4 +1,6 @@
-echo "Hello 1 $TEST_ENV"
+echo "BEGIN"
+echo "  DISPLAY=$DISPLAY"
+echo "  WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
 sleep 1
-echo "Hello 2 $TEST_ENV"
+echo "END"
 exit 10
