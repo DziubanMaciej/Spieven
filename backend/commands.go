@@ -39,6 +39,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 			Id:                     task.Computed.Id,
 			Cmdline:                task.Cmdline,
 			Cwd:                    task.Cwd,
+			Display:                task.Display,
 			OutFilePath:            task.Computed.OutFilePath,
 			IsDeactivated:          task.Dynamic.IsDeactivated,
 			DeactivationReason:     task.Dynamic.DeactivatedReason,

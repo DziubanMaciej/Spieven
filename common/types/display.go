@@ -60,3 +60,16 @@ func (display *DisplaySelection) ComputeDisplayLabel() string {
 		return "unknown"
 	}
 }
+
+func (display *DisplaySelection) ComputeDisplayLabelLong() string {
+	switch display.Type {
+	case DisplaySelectionTypeHeadless:
+		return "headless"
+	case DisplaySelectionTypeXorg:
+		return fmt.Sprintf("xorg %v", display.Name)
+	case DisplaySelectionTypeWayland:
+		return fmt.Sprintf("wayland %v", display.Name)
+	default:
+		return "unknown"
+	}
+}

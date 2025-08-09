@@ -93,6 +93,7 @@ func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, in
 			fmt.Printf("  Id:                     %v\n", task.Id)
 			fmt.Printf("  Cmdline:                %v\n", task.Cmdline)
 			fmt.Printf("  Cwd:                    %v\n", task.Cwd)
+			fmt.Printf("  Display:                %v\n", task.Display.ComputeDisplayLabelLong())
 			fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
 			fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
 			fmt.Printf("  RunCount:               %v\n", task.RunCount)

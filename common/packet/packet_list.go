@@ -41,6 +41,7 @@ type ListResponseBodyItem struct {
 	Id                     int
 	Cmdline                []string
 	Cwd                    string
+	Display                types.DisplaySelection
 	OutFilePath            string
 	MaxSubsequentFailures  int
 	IsDeactivated          bool
@@ -52,7 +53,6 @@ type ListResponseBodyItem struct {
 	LastExitValue          int
 	LastStdout             string
 	HasLastStdout          bool
-	// TODO include display information
 }
 type ListResponseBody []ListResponseBodyItem
 
