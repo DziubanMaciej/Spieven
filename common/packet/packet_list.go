@@ -43,7 +43,6 @@ type ListResponseBodyItem struct {
 	Cwd                    string
 	OutFilePath            string
 	MaxSubsequentFailures  int
-	UserIndex              int
 	IsDeactivated          bool
 	DeactivationReason     string
 	FriendlyName           string

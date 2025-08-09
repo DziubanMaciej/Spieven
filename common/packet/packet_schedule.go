@@ -6,7 +6,6 @@ type ScheduleRequestBody struct {
 	Cmdline       []string
 	Cwd           string
 	Env           []string
-	UserIndex     int
 	FriendlyName  string
 	CaptureStdout bool
 	Display       types.DisplaySelection

@@ -216,7 +216,6 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	logF(LogTask, "Task information:")
 	logF(LogTask, "  Id: %v", task.Computed.Id)
 	logF(LogTask, "  FriendlyName: %v", task.FriendlyName)
-	logF(LogTask, "  UserIndex: %v", task.UserIndex)
 	logF(LogTask, "  Cmdline: %v", task.Cmdline)
 	logF(LogTask, "  Cwd: %v", task.Cwd)
 	logF(LogTask, "  DisplayType=%v DisplayName=%v", task.Display.Type, task.Display.Name)

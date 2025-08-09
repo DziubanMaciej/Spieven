@@ -23,7 +23,6 @@ type Task struct {
 	Cwd                   string
 	Env                   []string
 	MaxSubsequentFailures int
-	UserIndex             int
 	FriendlyName          string
 	CaptureStdout         bool
 	Display               types.DisplaySelection
@@ -94,7 +93,6 @@ func (task *Task) ComputeHashes() (int, int) {
 	writeStrings(task.Cmdline)
 	writeString(task.Cwd)
 	writeInt(task.MaxSubsequentFailures)
-	writeInt(task.UserIndex)
 	writeString(task.FriendlyName)
 	writeBool(task.CaptureStdout)
 	writeInt(int(task.Display.Type))

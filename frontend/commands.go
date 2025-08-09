@@ -95,7 +95,6 @@ func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, in
 			fmt.Printf("  Cwd:                    %v\n", task.Cwd)
 			fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
 			fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
-			fmt.Printf("  UserIndex:              %v\n", task.UserIndex)
 			fmt.Printf("  RunCount:               %v\n", task.RunCount)
 			fmt.Printf("  FailureCount:           %v\n", task.FailureCount)
 			fmt.Printf("  SubsequentFailureCount: %v\n", task.SubsequentFailureCount)
@@ -109,7 +108,7 @@ func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, in
 	return nil
 }
 
-func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, friendlyName string, captureStdout bool, display types.DisplaySelection) (*packet.ScheduleResponseBody, error) {
+func CmdSchedule(backendConnection net.Conn, args []string, friendlyName string, captureStdout bool, display types.DisplaySelection) (*packet.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -127,7 +126,6 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		Cmdline:       args,
 		Cwd:           cwd,
 		Env:           os.Environ(),
-		UserIndex:     userIndex,
 		FriendlyName:  friendlyName,
 		CaptureStdout: captureStdout,
 		Display:       display,
@@ -164,7 +162,7 @@ func CmdSchedule(backendConnection net.Conn, args []string, userIndex int, frien
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
 	case types.ScheduleResponseStatusAlreadyRunning:
-		err = errors.New("task is already scheduled. To run multiple instances of the same task use userIndex. See help message for details")
+		err = errors.New("task is already scheduled. To run multiple instances of the same task use friendly name. See help message for details")
 		return nil, err
 	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
 		err = fmt.Errorf("task named %v is already running on current display", friendlyName)

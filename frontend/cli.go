@@ -78,10 +78,6 @@ func CreateCliCommands() []*cobra.Command {
 		Short: "Schedule a new task",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userIndex, err := cmd.Flags().GetInt("userIndex")
-			if err != nil {
-				return err
-			}
 			friendlyName, err := cmd.Flags().GetString("friendly-name")
 			if err != nil {
 				return err
@@ -106,7 +102,7 @@ func CreateCliCommands() []*cobra.Command {
 			connection, err := ConnectToBackend()
 			if err == nil {
 				defer connection.Close()
-				response, err := CmdSchedule(connection, args, userIndex, friendlyName, captureStdout, displaySelection)
+				response, err := CmdSchedule(connection, args, friendlyName, captureStdout, displaySelection)
 				if err != nil {
 					return err
 				}
@@ -121,7 +117,6 @@ func CreateCliCommands() []*cobra.Command {
 			return nil
 		},
 	}
-	scheduleCmd.Flags().IntP("userIndex", "i", 0, "An index used to differentiate between different tasks with the same settings. Does not serve any purpose other than to allow for duplicate tasks running.")
 	scheduleCmd.Flags().StringP("friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 	scheduleCmd.Flags().BoolP("capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
