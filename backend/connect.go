@@ -96,7 +96,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	}
 }
 
-func RunServer(frequentTrim bool) error {
+func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
 	common.SetDisplayEnvVarsForCurrentProcess(types.DisplaySelection{Type: types.DisplaySelectionTypeHeadless})
 
 	backendState, err := CreateBackendState(frequentTrim)
@@ -138,7 +138,16 @@ func RunServer(frequentTrim bool) error {
 			}
 			break
 		}
-		// TODO validate request came from local host, maybe add flag to allow remote connections
+
+		if !allowRemoteConnections {
+			ip := connection.RemoteAddr().(*net.TCPAddr).IP
+			if !ip.IsLoopback() {
+				backendState.messages.Add(BackendMessageError, nil, "Rejecting remote connection")
+				connection.Close()
+				continue
+			}
+		}
+
 		backendState.StartGoroutine(func() {
 			HandleConnection(backendState, connection)
 		})

@@ -11,10 +11,15 @@ func CreateCliCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			remote, err := cmd.Flags().GetBool("remote")
+			if err != nil {
+				return err
+			}
 
-			return RunServer(frequentTrim)
+			return RunServer(frequentTrim, remote)
 		},
 	}
 	command.Flags().BoolP("frequent-trim", "t", false, "Enable very frequent resource trimming. This flag should only be used for testing purposes")
+	command.Flags().BoolP("remote", "r", false, "Allow connections from remote addresses")
 	return command
 }
