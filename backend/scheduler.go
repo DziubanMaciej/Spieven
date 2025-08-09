@@ -10,6 +10,7 @@ import (
 	"supervisor/common"
 	"supervisor/common/types"
 	"sync"
+	"time"
 )
 
 type Scheduler struct {
@@ -326,6 +327,15 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		backendState.scheduler.lock.Lock()
 		task.Dynamic = shadowDynamicState
 		backendState.scheduler.lock.Unlock()
+
+		// Perform delay between command executions
+		if !shadowDynamicState.IsDeactivated {
+			delay := task.DelayAfterFailureMs
+			if commandSuccess {
+				delay = task.DelayAfterSuccessMs
+			}
+			time.Sleep(time.Millisecond * time.Duration(delay))
+		}
 	}
 
 	// Update dynamic state in case we broke from the loop

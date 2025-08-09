@@ -109,7 +109,15 @@ func CmdList(backendConnection net.Conn, filter packet.ListRequestBodyFilter, in
 	return nil
 }
 
-func CmdSchedule(backendConnection net.Conn, args []string, friendlyName string, captureStdout bool, display types.DisplaySelection) (*packet.ScheduleResponseBody, error) {
+func CmdSchedule(
+	backendConnection net.Conn,
+	args []string,
+	friendlyName string,
+	captureStdout bool,
+	display types.DisplaySelection,
+	rerunDelayAfterSuccess int,
+	rerunDelayAfterFailure int,
+	maxSubsequentFailures int) (*packet.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -124,12 +132,15 @@ func CmdSchedule(backendConnection net.Conn, args []string, friendlyName string,
 	}
 
 	body := packet.ScheduleRequestBody{
-		Cmdline:       args,
-		Cwd:           cwd,
-		Env:           os.Environ(),
-		FriendlyName:  friendlyName,
-		CaptureStdout: captureStdout,
-		Display:       display,
+		Cmdline:               args,
+		Cwd:                   cwd,
+		Env:                   os.Environ(),
+		FriendlyName:          friendlyName,
+		CaptureStdout:         captureStdout,
+		Display:               display,
+		DelayAfterSuccessMs:   rerunDelayAfterSuccess,
+		DelayAfterFailureMs:   rerunDelayAfterFailure,
+		MaxSubsequentFailures: maxSubsequentFailures,
 	}
 
 	err = ValidateScheduleRequestBody(&body)

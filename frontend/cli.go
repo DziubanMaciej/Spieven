@@ -67,10 +67,13 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		var (
-			friendlyName  string
-			watch         bool
-			captureStdout bool
-			display       string
+			friendlyName           string
+			watch                  bool
+			captureStdout          bool
+			display                string
+			rerunDelayAfterSuccess int
+			rerunDelayAfterFailure int
+			maxSubsequentFailures  int
 		)
 		cmd := &cobra.Command{
 			// TODO add -- separator to allow passing dash args as a cmdline to run
@@ -86,7 +89,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend()
 				if err == nil {
 					defer connection.Close()
-					response, err := CmdSchedule(connection, args, friendlyName, captureStdout, displaySelection)
+					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
+						displaySelection, rerunDelayAfterSuccess, rerunDelayAfterFailure, maxSubsequentFailures)
 					if err != nil {
 						return err
 					}
@@ -105,6 +109,9 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 		cmd.Flags().BoolVarP(&captureStdout, "capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
+		cmd.Flags().IntVarP(&rerunDelayAfterSuccess, "delay-after-success", "s", 0, "Delay in milliseconds before rerunning scheduled command after a successful execution")
+		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")
+		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
 		commands = append(commands, cmd)
 	}
 

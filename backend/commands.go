@@ -112,7 +112,9 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
-		MaxSubsequentFailures: 3,
+		DelayAfterSuccessMs:   request.DelayAfterSuccessMs,
+		DelayAfterFailureMs:   request.DelayAfterFailureMs,
+		MaxSubsequentFailures: request.MaxSubsequentFailures,
 		Env:                   request.Env,
 		FriendlyName:          request.FriendlyName,
 		CaptureStdout:         request.CaptureStdout,

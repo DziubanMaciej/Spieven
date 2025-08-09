@@ -22,6 +22,8 @@ type Task struct {
 	Cmdline               []string
 	Cwd                   string
 	Env                   []string
+	DelayAfterSuccessMs   int
+	DelayAfterFailureMs   int
 	MaxSubsequentFailures int
 	FriendlyName          string
 	CaptureStdout         bool

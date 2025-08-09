@@ -3,14 +3,15 @@ package packet
 import "supervisor/common/types"
 
 type ScheduleRequestBody struct {
-	Cmdline       []string
-	Cwd           string
-	Env           []string
-	FriendlyName  string
-	CaptureStdout bool
-	Display       types.DisplaySelection
-	// TODO add MaxSubsequentFailures int (-1 for no limit)
-	// TODO add interval between runs
+	Cmdline               []string
+	Cwd                   string
+	Env                   []string
+	FriendlyName          string
+	CaptureStdout         bool
+	Display               types.DisplaySelection
+	DelayAfterSuccessMs   int
+	DelayAfterFailureMs   int
+	MaxSubsequentFailures int
 }
 
 func EncodeSchedulePacket(data ScheduleRequestBody) (Packet, error) {
