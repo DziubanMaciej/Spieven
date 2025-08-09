@@ -10,135 +10,124 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CreateCliCommands() []*cobra.Command {
-	logCmd := &cobra.Command{
-		Use:   "log",
-		Short: "Display a backend log",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			connection, err := ConnectToBackend()
-			if err == nil {
-				defer connection.Close()
-				err = CmdLog(connection)
-			}
-			return err
-		},
+func CreateCliCommands() (commands []*cobra.Command) {
+	{
+		cmd := &cobra.Command{
+			Use:   "log",
+			Short: "Display a backend log",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				connection, err := ConnectToBackend()
+				if err == nil {
+					defer connection.Close()
+					err = CmdLog(connection)
+				}
+				return err
+			},
+		}
+		commands = append(commands, cmd)
 	}
 
-	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "Display a list of running tasks",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			idFilter, err := cmd.Flags().GetInt("id")
-			if err != nil {
-				return err
-			}
-			nameFilter, err := cmd.Flags().GetString("name")
-			if err != nil {
-				return err
-			}
-			display, err := cmd.Flags().GetString("display")
-			if err != nil {
-				return err
-			}
-			includeDeactivated, err := cmd.Flags().GetBool("include-deactivated")
-			if err != nil {
-				return err
-			}
-			jsonOutput, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-			filter := packet.ListRequestBodyFilter{
-				IdFilter:   idFilter,
-				NameFilter: nameFilter,
-			}
-			if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
-				return err
-			}
-			filter.Derive()
+	{
+		var (
+			idFilter           int
+			nameFilter         string
+			display            string
+			includeDeactivated bool
+			jsonOutput         bool
+		)
+		cmd := &cobra.Command{
+			Use:   "list",
+			Short: "Display a list of running tasks",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				filter := packet.ListRequestBodyFilter{
+					IdFilter:   idFilter,
+					NameFilter: nameFilter,
+				}
+				if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
+					return err
+				}
+				filter.Derive()
 
-			connection, err := ConnectToBackend()
-			if err == nil {
-				defer connection.Close()
-				err = CmdList(connection, filter, includeDeactivated, jsonOutput)
-			}
-			return err
-		},
+				connection, err := ConnectToBackend()
+				if err == nil {
+					defer connection.Close()
+					err = CmdList(connection, filter, includeDeactivated, jsonOutput)
+				}
+				return err
+			},
+		}
+		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
+		cmd.Flags().StringVarP(&nameFilter, "name", "n", "", "Filter tasks by friendly name")
+		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
+		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
+		cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Display output as json.")
+		commands = append(commands, cmd)
+		// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found
 	}
-	listCmd.Flags().IntP("id", "i", math.MaxInt, "Filter tasks by id")
-	listCmd.Flags().StringP("name", "n", "", "Filter tasks by friendly name")
-	listCmd.Flags().StringP("display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
-	listCmd.Flags().BoolP("include-deactivated", "d", false, "Include deactivated tasks as well as actively running ones")
-	listCmd.Flags().BoolP("json", "j", false, "Display output as json.")
-	// TODO Add -D option to always load deactivated and -d option to load deactivated only if not found
 
-	scheduleCmd := &cobra.Command{
-		// TODO add -- separator to allow passing dash args as a cmdline to run
-		Use:   "schedule command [args...]",
-		Short: "Schedule a new task",
-		Args:  cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			friendlyName, err := cmd.Flags().GetString("friendly-name")
-			if err != nil {
-				return err
-			}
-			watch, err := cmd.Flags().GetBool("watch")
-			if err != nil {
-				return err
-			}
-			captureStdout, err := cmd.Flags().GetBool("capture-stdout")
-			if err != nil {
-				return err
-			}
-			display, err := cmd.Flags().GetString("display")
-			if err != nil {
-				return err
-			}
-			var displaySelection types.DisplaySelection
-			if err := displaySelection.ParseDisplaySelection(display); err != nil {
-				return err
-			}
-
-			connection, err := ConnectToBackend()
-			if err == nil {
-				defer connection.Close()
-				response, err := CmdSchedule(connection, args, friendlyName, captureStdout, displaySelection)
-				if err != nil {
+	{
+		var (
+			friendlyName  string
+			watch         bool
+			captureStdout bool
+			display       string
+		)
+		cmd := &cobra.Command{
+			// TODO add -- separator to allow passing dash args as a cmdline to run
+			Use:   "schedule command [args...]",
+			Short: "Schedule a new task",
+			Args:  cobra.MinimumNArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				var displaySelection types.DisplaySelection
+				if err := displaySelection.ParseDisplaySelection(display); err != nil {
 					return err
 				}
 
-				if watch {
-					err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
+				connection, err := ConnectToBackend()
+				if err == nil {
+					defer connection.Close()
+					response, err := CmdSchedule(connection, args, friendlyName, captureStdout, displaySelection)
 					if err != nil {
 						return err
 					}
+
+					if watch {
+						err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
+						if err != nil {
+							return err
+						}
+					}
 				}
-			}
-			return nil
-		},
+				return nil
+			},
+		}
+		cmd.Flags().StringVarP(&friendlyName, "friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
+		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+		cmd.Flags().BoolVarP(&captureStdout, "capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
+		cmd.Flags().StringVarP(&display, "display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
+		commands = append(commands, cmd)
 	}
-	scheduleCmd.Flags().StringP("friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
-	scheduleCmd.Flags().BoolP("watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
-	scheduleCmd.Flags().BoolP("capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
-	scheduleCmd.Flags().StringP("display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
 
-	peekCmd := &cobra.Command{
-		Use:   "peek [taskID]",
-		Short: "Displays logs of a given task",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			taskId, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid integer: %v", err)
-			}
+	{
+		cmd := &cobra.Command{
+			Use:   "peek [taskID]",
+			Short: "Displays logs of a given task",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				taskId, err := strconv.Atoi(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid integer: %v", err)
+				}
 
-			connection, err := ConnectToBackend()
-			if err == nil {
-				defer connection.Close()
-				err = CmdWatchTaskLog(connection, taskId, nil)
-			}
-			return err
-		},
+				connection, err := ConnectToBackend()
+				if err == nil {
+					defer connection.Close()
+					err = CmdWatchTaskLog(connection, taskId, nil)
+				}
+				return err
+			},
+		}
+		commands = append(commands, cmd)
 	}
 
 	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
@@ -147,10 +136,5 @@ func CreateCliCommands() []*cobra.Command {
 
 	// TODO add refresh command. Refresh all when no arg, allow filters like list.
 
-	return []*cobra.Command{
-		logCmd,
-		listCmd,
-		scheduleCmd,
-		peekCmd,
-	}
+	return
 }
