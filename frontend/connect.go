@@ -1,9 +1,14 @@
 package frontend
 
 import (
+	"errors"
 	"net"
+	"os"
+	"os/exec"
 	"supervisor/common"
 	"supervisor/common/packet"
+	"syscall"
+	"time"
 )
 
 func ConnectToBackend() (net.Conn, error) {
@@ -14,8 +19,26 @@ func ConnectToBackend() (net.Conn, error) {
 
 	connection, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err != nil {
-		// TODO start the backend and disown it. Try connecting for 1 second, then return error.
-		return nil, err
+		spievenBinary := os.Args[0]
+		cmd := exec.Command(spievenBinary, "serve")
+		cmd.Stdin = nil
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
+		err := cmd.Start()
+		if err != nil {
+			return nil, errors.New("cannot start Spieven backend")
+		}
+
+		dial := func() (*net.TCPConn, error) {
+			return net.DialTCP("tcp4", nil, tcpAddr)
+		}
+		connection, err = common.TryCallWithTimeouts(dial, time.Millisecond*1300, 13)
+		if err != nil {
+			return nil, errors.New("cannot connect to Spieven backend even after starting it in backgroun")
+		}
 	}
 
 	if common.HandshakeValidationEnabled {

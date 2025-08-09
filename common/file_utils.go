@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"hash/fnv"
 	"io"
 	"os"
@@ -68,26 +67,11 @@ func WriteStringToWriter(writer io.Writer, value string) error {
 	return WriteBytesToWriter(writer, []byte(value))
 }
 
-func OpenFileWithTimeout(filePath string, flag int, perm os.FileMode, timeout time.Duration) (file *os.File, err error) {
-	iterations := 5
-	deadline := time.Now()
-	timeoutPerIteration := timeout / time.Duration(iterations)
-
-	for i := 0; i < iterations; i++ {
-		fmt.Printf("Iter %v (timeoutPerIteration=%v)\n", i, timeoutPerIteration)
-		file, err = os.OpenFile(filePath, flag, perm)
-		if err == nil {
-			break
-		} else {
-			now := time.Now()
-			deadline = deadline.Add(timeoutPerIteration)
-			if now.Before(deadline) {
-				time.Sleep(deadline.Sub(now))
-			}
-		}
-
+func OpenFileWithTimeout(filePath string, flag int, perm os.FileMode, timeout time.Duration) (*os.File, error) {
+	open := func() (*os.File, error) {
+		return os.OpenFile(filePath, flag, perm)
 	}
-	return
+	return TryCallWithTimeouts(open, timeout, 5)
 }
 
 func FileExists(filename string) bool {
