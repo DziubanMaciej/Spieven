@@ -188,3 +188,42 @@ func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn,
 
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
+
+func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request packet.RefreshBody) error {
+	scheduler := &backendState.scheduler
+
+	var response packet.RefreshResponseBody
+
+	refresh := func(task *Task) {
+		select {
+		case task.Channels.RefreshChannel <- struct{}{}:
+		default:
+		}
+		response.RefreshedTasksCount++
+	}
+
+	scheduler.lock.Lock()
+
+	if request.TaskId == -1 {
+		for _, task := range scheduler.tasks {
+			refresh(task)
+		}
+	} else {
+		for _, task := range scheduler.tasks {
+			if task.Computed.Id == request.TaskId {
+				refresh(task)
+			}
+		}
+	}
+
+	response.ActiveTasksCount = len(scheduler.tasks)
+
+	scheduler.lock.Unlock()
+
+	responsePacket, err := packet.EncodeRefreshResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return packet.SendPacket(frontendConnection, responsePacket)
+}

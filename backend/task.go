@@ -39,7 +39,8 @@ type Task struct {
 	}
 
 	Channels struct {
-		StopChannel chan string `json:"-"`
+		StopChannel    chan string   `json:"-"`
+		RefreshChannel chan struct{} `json:"-"`
 	}
 
 	Dynamic struct {
@@ -64,7 +65,8 @@ func (task *Task) Init(id int, outFilePath string) {
 	}
 	common.SetDisplayEnvVarsForSubprocess(task.Display, &task.Env)
 
-	task.Channels.StopChannel = task.CreateStopChannel()
+	task.Channels.StopChannel = make(chan string, 1)
+	task.Channels.RefreshChannel = make(chan struct{})
 
 	task.Computed.Hash, task.Computed.NameDisplayHash = task.ComputeHashes()
 }
@@ -149,10 +151,6 @@ func (task *Task) ComputeDisplayFromEnv() types.DisplaySelection {
 
 func (task *Task) ComputeLogLabel(id int) string {
 	return fmt.Sprintf("task id=%v, %v", id, task.FriendlyName)
-}
-
-func (task *Task) CreateStopChannel() chan string {
-	return make(chan string, 1)
 }
 
 func (task *Task) ReadLastStdout() (stdout string, err error) {

@@ -316,3 +316,50 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 
 	return nil
 }
+
+func CmdRefresh(backendConnection net.Conn, taskId int) error {
+	request := packet.RefreshBody{
+		TaskId: taskId,
+	}
+
+	requestPacket, err := packet.EncodeRefreshPacket(request)
+	if err != nil {
+		return err
+	}
+
+	err = packet.SendPacket(backendConnection, requestPacket)
+	if err != nil {
+		return err
+	}
+
+	responsePacket, err := packet.ReceivePacket(backendConnection)
+	if err != nil {
+		return err
+	}
+
+	response, err := packet.DecodeRefreshResponsePacket(responsePacket)
+	if err != nil {
+		return err
+	}
+
+	if taskId == -1 {
+		// We asked to refresh all tasks
+		if response.ActiveTasksCount != response.RefreshedTasksCount {
+			return errors.New("not all tasks were refreshed")
+		} else {
+			fmt.Println("all tasks refreshed")
+			return nil
+		}
+	} else {
+		// We asked to refresh a specific task
+		switch response.RefreshedTasksCount {
+		case 0:
+			return errors.New("invalid task id")
+		case 1:
+			fmt.Println("task refreshed")
+			return nil
+		default:
+			return errors.New("multiple tasks refreshed, this is unexpected")
+		}
+	}
+}

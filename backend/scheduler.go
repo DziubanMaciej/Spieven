@@ -334,7 +334,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			if commandSuccess {
 				delay = task.DelayAfterSuccessMs
 			}
-			time.Sleep(time.Millisecond * time.Duration(delay))
+			InterruptibleSleep(time.Millisecond*time.Duration(delay), task.Channels.RefreshChannel)
 		}
 	}
 
@@ -342,4 +342,18 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	backendState.scheduler.lock.Lock()
 	task.Dynamic = shadowDynamicState
 	backendState.scheduler.lock.Unlock()
+}
+
+func InterruptibleSleep(d time.Duration, refreshChannel chan struct{}) {
+	// Start a timer
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	// Wait for either the timer or the stop channel
+	select {
+	case <-timer.C:
+		fmt.Println("Got timer")
+	case <-refreshChannel:
+		fmt.Println("Got channel")
+	}
 }

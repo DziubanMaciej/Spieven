@@ -16,12 +16,14 @@ const (
 	PacketIdList
 	PacketIdLog
 	PacketIdQueryTaskActive
+	PacketIdRefresh
 
 	// Backend->Frontend commands
 	PacketIdScheduleResponse
 	PacketIdListResponse
 	PacketIdLogResponse
 	PacketIdQueryTaskActiveResponse
+	PacketIdRefreshResponse
 )
 
 type Packet struct {

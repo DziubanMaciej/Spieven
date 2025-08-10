@@ -146,7 +146,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				connection, err := ConnectToBackend()
 				if err == nil {
-					connection.Close()
+					defer connection.Close()
 					fmt.Println("backend works correctly")
 					return nil
 				}
@@ -156,9 +156,33 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		commands = append(commands, cmd)
 	}
 
-	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
+	{
+		cmd := &cobra.Command{
+			Use:   "refresh",
+			Short: "Cancels a wait",
+			Args:  cobra.MaximumNArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				taskId := -1
+				if len(args) > 0 {
+					var err error
+					taskId, err = strconv.Atoi(args[0])
+					if err != nil {
+						return err
+					}
+				}
 
-	// TODO add refresh command. Refresh all when no arg, allow filters like list.
+				connection, err := ConnectToBackend()
+				if err != nil {
+					return errors.New("cannot connect to backend")
+				}
+				defer connection.Close()
+				return CmdRefresh(connection, taskId)
+			},
+		}
+		commands = append(commands, cmd)
+	}
+
+	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
 
 	return
 }

@@ -88,6 +88,15 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
+		case packet.PacketIdRefresh:
+			request, err := packet.DecodeRefreshPacket(requestPacket)
+			if err != nil {
+				return
+			}
+			err = CmdRefresh(backendState, connection, request)
+			if err != nil {
+				return
+			}
 		default:
 			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return
