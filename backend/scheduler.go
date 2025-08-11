@@ -216,6 +216,7 @@ func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *Backend
 			return types.ScheduleResponseStatusInvalidDisplay
 		}
 	case types.DisplaySelectionTypeWayland:
+		// TODO implement wayland detection
 		backendState.messages.Add(BackendMessageError, newTask, "Wayland display tracking is not implemented")
 	default:
 		backendState.messages.Add(BackendMessageError, newTask, "Invalid display type")

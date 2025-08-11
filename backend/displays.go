@@ -96,6 +96,8 @@ func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 		backendState.scheduler.StopTasksByDisplay(types.DisplaySelectionTypeXorg, name)
 		backendState.scheduler.lock.Unlock()
 		backendState.displays.lock.Unlock()
+
+		// TODO implement a more sophisticated display termination: wait for some time before killing tasks to give them time to finish gracefully. Make it a backend's parameter.
 	})
 
 	return &result, nil
