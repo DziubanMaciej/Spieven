@@ -487,8 +487,6 @@ func InterruptibleSleep(d time.Duration, refreshChannel chan struct{}) {
 	// Wait for either the timer or the stop channel
 	select {
 	case <-timer.C:
-		fmt.Println("Got timer")
 	case <-refreshChannel:
-		fmt.Println("Got channel")
 	}
 }

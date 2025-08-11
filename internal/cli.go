@@ -16,7 +16,7 @@ func CreateCliCommands() *cobra.Command {
 	}
 
 	watchxorgCmd := &cobra.Command{
-		Use:  "watchxorg [display]",
+		Use:  "watchxorg DISPLAY",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dpyName := args[0]

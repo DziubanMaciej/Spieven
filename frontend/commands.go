@@ -395,10 +395,10 @@ func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleRe
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
 	case types.ScheduleResponseStatusAlreadyRunning:
-		err = fmt.Errorf("task is already scheduled. Looks like you scheduled an identical task after task %v was deactivated.", taskId)
+		err = fmt.Errorf("task is already scheduled. Looks like you scheduled an identical task after task %v was deactivated", taskId)
 		return nil, err
 	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
-		err = fmt.Errorf("task named %v is already running on current display. Looks like you scheduled an identical task after task %v was deactivated.", taskId)
+		err = fmt.Errorf("task with this name is already running on current display. Looks like you scheduled an identical task after task %v was deactivated", taskId)
 		return nil, err
 	case types.ScheduleResponseStatusInvalidDisplay:
 		err = errors.New("task is using invalid display")

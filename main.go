@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"supervisor/backend"
+	"supervisor/common"
 	"supervisor/frontend"
 	"supervisor/internal"
 
@@ -11,7 +12,7 @@ import (
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:          "Spieven",
+		Use:          "spieven",
 		Short:        "Spieven is a process supervisor for Linux",
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
@@ -29,6 +30,7 @@ func main() {
 	internalCommand := internal.CreateCliCommands()
 	rootCmd.AddCommand(internalCommand)
 
+	common.CliApplyRecursively(rootCmd, common.CliSetPassthroughUsage)
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

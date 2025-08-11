@@ -8,8 +8,8 @@ func CreateCliCommand() *cobra.Command {
 		remote       bool
 	)
 	command := &cobra.Command{
-		Use:   "serve",
-		Short: "Launch Spieven backend engine",
+		Use:   "serve [OPTIONS...]",
+		Short: "Launch Spieven backend engine.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunServer(frequentTrim, remote)
 		},

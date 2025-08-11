@@ -38,7 +38,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			jsonOutput               bool
 		)
 		cmd := &cobra.Command{
-			Use:   "list",
+			Use:   "list [OPTIONS...]",
 			Short: "Display a list of running tasks",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				filter := packet.ListRequestBodyFilter{
@@ -77,10 +77,24 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			rerunDelayAfterFailure int
 			maxSubsequentFailures  int
 		)
+
+		longDescription := "Schedule a new task. By default all option arguments (starting with hyphens) will be interpreted " +
+			"as Spieven arguments. To pass option arguments to the actual command to be scheduled, use a -- separator before " +
+			"the command. Examples:" +
+			"\n  spieven schedule notify-send 'Hello'                                       # OK: no ptions" +
+			"\n  spieven schedule --delay-after-success 1000 notify-send 'Hello'            # OK: only Spieven options" +
+			"\n  spieven schedule --delay-after-success 1000 notify-send 'Hello' -t 500     # Probably NOT OK: -t will be treated as a Spieven option" +
+			"\n  spieven schedule --delay-after-success 1000 -- notify-send 'Hello' -t 500  # OK: -t will be treated as notify-send option" +
+			"\n" +
+			"\nThe scheduled task can be rejected by Spieven backend for a number of reasons, e.g. duplicate task. In that case the " +
+			"schedule command will fail and print appropriate error string. The schedule command will succeed as long as Spieven " +
+			"backend decides it can run the task. This doesn't neccessarily mean the task itself can succeed - it can fail immediately " +
+			"or at any point in the future. In order to query the state of running task, use list or peek command."
+
 		cmd := &cobra.Command{
-			// TODO add -- separator to allow passing dash args as a cmdline to run
-			Use:   "schedule command [args...]",
+			Use:   "schedule [OPTIONS...] [--] COMMAND [COMMAND_ARGS...]",
 			Short: "Schedule a new task",
+			Long:  longDescription,
 			Args:  cobra.MinimumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				var displaySelection types.DisplaySelection
@@ -119,7 +133,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		cmd := &cobra.Command{
-			Use:   "peek [taskID]",
+			Use:   "peek TASK_ID [OPTIONS...]",
 			Short: "Displays logs of a given task",
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
@@ -158,8 +172,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		cmd := &cobra.Command{
-			Use:   "refresh",
-			Short: "Cancels a wait",
+			Use:   "refresh [TASK_ID]",
+			Short: "Cancels a wait between task's command execution. If TASK_ID is not specified, all tasks are refreshed.",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				taskId := -1
@@ -185,9 +199,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 	{
 		var watch bool
 		cmd := &cobra.Command{
-			// TODO add -- separator to allow passing dash args as a cmdline to run
-			Use:   "reschedule taskId [args...]",
-			Short: "Reschedule a deactivated task by its ID",
+			Use:   "reschedule TASK_ID [OPTIONS...]",
+			Short: "Reschedule a deactivated task by its ID.",
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				taskId, err := strconv.Atoi(args[0])
