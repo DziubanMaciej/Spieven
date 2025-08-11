@@ -2,7 +2,7 @@ package frontend
 
 import (
 	"fmt"
-	"supervisor/common/packet"
+	"spieven/common/packet"
 	"unicode"
 )
 

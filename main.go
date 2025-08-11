@@ -2,10 +2,10 @@ package main
 
 import (
 	"os"
-	"supervisor/backend"
-	"supervisor/common"
-	"supervisor/frontend"
-	"supervisor/internal"
+	"spieven/backend"
+	"spieven/common"
+	"spieven/frontend"
+	"spieven/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -13,7 +13,7 @@ import (
 func main() {
 	rootCmd := &cobra.Command{
 		Use:          "spieven",
-		Short:        "Spieven is a process supervisor for Linux",
+		Short:        "Spieven is a process spieven for Linux",
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}

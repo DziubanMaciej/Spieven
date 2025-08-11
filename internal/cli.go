@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"supervisor/common"
+	"spieven/common"
 
 	"github.com/spf13/cobra"
 )

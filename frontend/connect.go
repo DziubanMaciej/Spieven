@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"supervisor/common"
-	"supervisor/common/packet"
+	"spieven/common"
+	"spieven/common/packet"
 	"syscall"
 	"time"
 )

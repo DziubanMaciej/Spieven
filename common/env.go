@@ -2,7 +2,7 @@ package common
 
 import (
 	"os"
-	"supervisor/common/types"
+	"spieven/common/types"
 )
 
 func SetDisplayEnvVarsForCurrentProcess(display types.DisplaySelection) error {

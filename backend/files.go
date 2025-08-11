@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"supervisor/common"
+	"spieven/common"
 )
 
 type FilePathProvider struct {

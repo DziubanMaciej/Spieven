@@ -3,9 +3,9 @@ package backend
 import (
 	"fmt"
 	"net"
-	"supervisor/common"
-	"supervisor/common/packet"
-	"supervisor/common/types"
+	"spieven/common"
+	"spieven/common/packet"
+	"spieven/common/types"
 )
 
 func ValidateHandshake(connection net.Conn, backendState *BackendState) error {

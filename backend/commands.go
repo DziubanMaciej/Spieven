@@ -2,8 +2,8 @@ package backend
 
 import (
 	"net"
-	"supervisor/common/packet"
-	"supervisor/common/types"
+	"spieven/common/packet"
+	"spieven/common/types"
 )
 
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {

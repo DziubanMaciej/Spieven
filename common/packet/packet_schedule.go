@@ -1,6 +1,6 @@
 package packet
 
-import "supervisor/common/types"
+import "spieven/common/types"
 
 type ScheduleRequestBody struct {
 	Cmdline               []string

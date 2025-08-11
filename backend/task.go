@@ -6,10 +6,10 @@ import (
 	"hash"
 	"hash/fnv"
 	"os"
+	"spieven/common"
+	"spieven/common/types"
 	"strconv"
 	"strings"
-	"supervisor/common"
-	"supervisor/common/types"
 )
 
 // Task struct describes a command that is scheduled to be running in background. For each Task Spieven creates a

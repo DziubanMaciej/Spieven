@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"supervisor/common"
+	"spieven/common"
 	"sync"
 	"syscall"
 	"time"

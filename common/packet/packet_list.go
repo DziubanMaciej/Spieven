@@ -2,7 +2,7 @@ package packet
 
 import (
 	"math"
-	"supervisor/common/types"
+	"spieven/common/types"
 )
 
 type ListRequestBodyFilter struct {

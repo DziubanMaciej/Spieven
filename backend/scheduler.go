@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"supervisor/common"
-	"supervisor/common/types"
+	"spieven/common"
+	"spieven/common/types"
 	"sync"
 	"time"
 )

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"spieven/common/packet"
+	"spieven/common/types"
 	"strconv"
-	"supervisor/common/packet"
-	"supervisor/common/types"
 
 	"github.com/spf13/cobra"
 )
