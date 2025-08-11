@@ -1,5 +1,5 @@
 //go:build handshake_check
 
-package common
+package buildopts
 
 const HandshakeValidationEnabled = true

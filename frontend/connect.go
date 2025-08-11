@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"spieven/common"
+	"spieven/common/buildopts"
 	"spieven/common/packet"
 	"syscall"
 	"time"
@@ -41,7 +42,7 @@ func ConnectToBackend() (net.Conn, error) {
 		}
 	}
 
-	if common.HandshakeValidationEnabled {
+	if buildopts.HandshakeValidationEnabled {
 		handshakeValue, err := common.CalculateSpievenFileHash()
 		if err != nil {
 			return nil, err

@@ -62,9 +62,3 @@ Download from [GitHub releases](https://github.com/DziubanMaciej/Spieven/release
 Install `go` compiler toolchain. Refer to your distribution's package manager.
 Run `go build` and grab the `spieven` binary file.
 Alternatively, add `$GOBIN` into your `PATH` and run `go install`, which will build and install `spieven` binary in `$GOBIN`.
-
-
-
-# TODO
-- TODO create a script to compile for release. Rremember about enabling handshake. Remember about release mode for optimizations.
-- TODO explore running on system without X libraries installed. Can we load dynamically? Same for Wayland

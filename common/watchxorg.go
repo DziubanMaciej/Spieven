@@ -13,6 +13,8 @@ import (
 	"unsafe"
 )
 
+// TODO explore running on system without X libraries installed. Can we load dynamically? Same for Wayland
+
 func TryConnectXorg(displayName string) *C.xcb_connection_t {
 	// Connect to the X server (NULL = getenv("DISPLAY"))
 	cDisplayName := C.CString(displayName)

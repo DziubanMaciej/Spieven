@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"spieven/common"
+	"spieven/common/buildopts"
 	"spieven/common/packet"
 	"spieven/common/types"
 )
@@ -36,7 +37,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	})
 
 	// Handle handshake with the frontend
-	if common.HandshakeValidationEnabled {
+	if buildopts.HandshakeValidationEnabled {
 		err := ValidateHandshake(connection, backendState)
 		if err != nil {
 			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid handshake")
