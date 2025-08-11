@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"spieven/backend"
 	"spieven/common"
@@ -29,6 +30,18 @@ func main() {
 
 	internalCommand := internal.CreateCliCommands()
 	rootCmd.AddCommand(internalCommand)
+
+	{
+		cmd := &cobra.Command{
+			Use:   "version",
+			Short: "Print the version number",
+			Run: func(cmd *cobra.Command, args []string) {
+				fmt.Println(common.Version)
+			},
+		}
+		rootCmd.AddCommand(cmd)
+
+	}
 
 	common.CliApplyRecursively(rootCmd, common.CliSetPassthroughUsage)
 	err := rootCmd.Execute()

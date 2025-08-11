@@ -51,6 +51,7 @@ Internally *Spieven* works in a client-server architecture, here called frontend
 
 The majority of *Spieven* logic lives in the backend, which manages and runs the tasks, caches the results, monitors display state, and handles frontend commands. Frontend commands mainly convert command-line arguments to TCP packets and send them to the backend. Most of the frontend commands exit immediately after sending a packet to the backend and receiving a response. For example, if the `spieven schedule` command exits immediately, it does not mean the task has ended. It is running in the background as a backend's subprocess.
 
+It is worth noting that *Spieven*'s frontend and backend are really the very same binary file and *Spieven* verifies that. There is no compatibility support in the communication protocol between them. Only command-line interface is meant to be stable.
 
 
 # Installing
@@ -65,6 +66,5 @@ Alternatively, add `$GOBIN` into your `PATH` and run `go install`, which will bu
 
 
 # TODO
-- TODO add version
 - TODO create a script to compile for release. Rremember about enabling handshake. Remember about release mode for optimizations.
 - TODO explore running on system without X libraries installed. Can we load dynamically? Same for Wayland
