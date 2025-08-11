@@ -89,7 +89,11 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 				return
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
+
+				state.scheduler.lock.Lock()
 				state.scheduler.Trim(state.messages, state.files)
+				state.scheduler.lock.Unlock()
+
 				state.displays.Trim()
 			}
 		}

@@ -120,6 +120,8 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 }
 
 func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleRequestBody) error {
+	scheduler := &backendState.scheduler
+
 	task := Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
@@ -132,7 +134,10 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		Display:               request.Display,
 	}
 
-	responseStatus := TryScheduleTask(&task, backendState)
+	scheduler.lock.Lock()
+	responseStatus := scheduler.TryScheduleTask(&task, backendState)
+	scheduler.lock.Unlock()
+
 	response := packet.ScheduleResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
@@ -237,7 +242,7 @@ func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, requ
 
 	task, status := scheduler.ExtractDeactivatedTask(request.TaskId, backendState)
 	if status == types.ScheduleResponseStatusSuccess {
-		response.Status = TryRescheduleTask(task, backendState)
+		response.Status = scheduler.TryRescheduleTask(task, backendState)
 		response.LogFile = task.Computed.OutFilePath
 		response.Id = task.Computed.Id
 	} else {

@@ -91,8 +91,10 @@ func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 
 		// Display is closed. Stop all tasks using it.
 		backendState.displays.lock.Lock()
+		backendState.scheduler.lock.Lock()
 		result.IsDeactivated = true
 		backendState.scheduler.StopTasksByDisplay(types.DisplaySelectionTypeXorg, name)
+		backendState.scheduler.lock.Unlock()
 		backendState.displays.lock.Unlock()
 	})
 

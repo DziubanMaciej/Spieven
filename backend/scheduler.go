@@ -16,14 +16,13 @@ import (
 type Scheduler struct {
 	tasks     []*Task
 	currentId int
-	lock      sync.Mutex
+	lock      common.CheckedLock
 
 	_ common.NoCopy
 }
 
 func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePathProvider) {
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
+	scheduler.lock.AssertLocked()
 
 	var tasksToKeep []*Task
 	var tasksToDeactivate []*Task
@@ -73,6 +72,8 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 }
 
 func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, files *FilePathProvider) []*Task {
+	scheduler.lock.AssertLocked()
+
 	var result []*Task
 
 	filePath := files.GetDeactivatedTasksFile()
@@ -98,6 +99,8 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 }
 
 func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *BackendState) (*Task, types.ScheduleResponseStatus) {
+	scheduler.lock.AssertLocked()
+
 	backendMessages := backendState.messages
 
 	var extractedTask *Task
@@ -186,6 +189,8 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 }
 
 func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleResponseStatus {
+	scheduler.lock.AssertLocked()
+
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated {
 			if currTask.Computed.Hash == newTask.Computed.Hash {
@@ -201,6 +206,8 @@ func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleRe
 }
 
 func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+	scheduler.lock.AssertLocked()
+
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
 	case types.DisplaySelectionTypeXorg:
@@ -217,12 +224,8 @@ func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *Backend
 	return types.ScheduleResponseStatusSuccess
 }
 
-func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
-	// TODO never lock in the scheduler methods, require caller to do it
-	scheduler := &backendState.scheduler
-
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
+func (scheduler *Scheduler) TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
 	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
@@ -246,8 +249,8 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleRe
 	return types.ScheduleResponseStatusSuccess
 }
 
-func TryRescheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
-	scheduler := &backendState.scheduler
+func (scheduler *Scheduler) TryRescheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
 	newTask.Init(newTask.Computed.Id, backendState.files.GetTaskLogFile(newTask.Computed.Id))
@@ -271,6 +274,8 @@ func TryRescheduleTask(newTask *Task, backendState *BackendState) types.Schedule
 }
 
 func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectionType, displayName string) {
+	scheduler.lock.AssertLocked()
+
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
