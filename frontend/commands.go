@@ -363,3 +363,54 @@ func CmdRefresh(backendConnection net.Conn, taskId int) error {
 		}
 	}
 }
+
+func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleResponseBody, error) {
+	request := packet.RescheduleRequestBody{
+		TaskId: taskId,
+	}
+
+	requestPacket, err := packet.EncodeReschedulePacket(request)
+	if err != nil {
+		return nil, err
+	}
+
+	err = packet.SendPacket(backendConnection, requestPacket)
+	if err != nil {
+		return nil, err
+	}
+
+	responsePacket, err := packet.ReceivePacket(backendConnection)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := packet.DecodeRescheduleResponsePacket(responsePacket)
+	if err != nil {
+		return nil, err
+	}
+
+	switch response.Status {
+	case types.ScheduleResponseStatusSuccess:
+		fmt.Println("Rescheduled task")
+		fmt.Println("Log file: ", response.LogFile)
+		return &response, nil
+	case types.ScheduleResponseStatusAlreadyRunning:
+		err = fmt.Errorf("task is already scheduled. Looks like you scheduled an identical task after task %v was deactivated.", taskId)
+		return nil, err
+	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+		err = fmt.Errorf("task named %v is already running on current display. Looks like you scheduled an identical task after task %v was deactivated.", taskId)
+		return nil, err
+	case types.ScheduleResponseStatusInvalidDisplay:
+		err = errors.New("task is using invalid display")
+		return nil, err
+	case types.ScheduleResponseStatusTaskNotFound:
+		err = errors.New("task not found")
+		return nil, err
+	case types.ScheduleResponseStatusTaskNotDeactivated:
+		err = errors.New("task is already active")
+		return nil, err
+	default:
+		err = errors.New("unknown rescheduling error")
+		return nil, err
+	}
+}

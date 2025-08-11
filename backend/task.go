@@ -57,6 +57,7 @@ type Task struct {
 }
 
 func (task *Task) Init(id int, outFilePath string) {
+	// Set some derived values
 	task.Computed.Id = id
 	task.Computed.OutFilePath = outFilePath
 	task.Computed.LogLabel = task.ComputeLogLabel(id)
@@ -65,10 +66,18 @@ func (task *Task) Init(id int, outFilePath string) {
 	}
 	common.SetDisplayEnvVarsForSubprocess(task.Display, &task.Env)
 
+	// Create channels used for communicating with the task
 	task.Channels.StopChannel = make(chan string, 1)
 	task.Channels.RefreshChannel = make(chan struct{})
 
+	// Reset some dynamic state in case we're reactivating a deactivated task
+	task.Dynamic.SubsequentFailureCount = 0
+	task.Dynamic.IsDeactivated = false
+	task.Dynamic.DeactivatedReason = ""
+
+	// Compute hashes for comparing tasks
 	task.Computed.Hash, task.Computed.NameDisplayHash = task.ComputeHashes()
+
 }
 
 func (task *Task) ComputeHashes() (int, int) {

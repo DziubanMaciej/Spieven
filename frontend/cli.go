@@ -182,7 +182,40 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		commands = append(commands, cmd)
 	}
 
-	// TODO add reschedule [taskId] command. We will have to rewrite the .ndjson file
+	{
+		var watch bool
+		cmd := &cobra.Command{
+			// TODO add -- separator to allow passing dash args as a cmdline to run
+			Use:   "reschedule taskId [args...]",
+			Short: "Reschedule a deactivated task by its ID",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				taskId, err := strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+
+				connection, err := ConnectToBackend()
+				if err == nil {
+					defer connection.Close()
+					response, err := CmdReschedule(connection, taskId)
+					if err != nil {
+						return err
+					}
+
+					if watch {
+						err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
+						if err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			},
+		}
+		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+		commands = append(commands, cmd)
+	}
 
 	return
 }

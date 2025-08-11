@@ -7,5 +7,7 @@ const (
 	ScheduleResponseStatusAlreadyRunning
 	ScheduleResponseStatusNameDisplayAlreadyRunning
 	ScheduleResponseStatusInvalidDisplay
+	ScheduleResponseStatusTaskNotFound       // only for reschedule
+	ScheduleResponseStatusTaskNotDeactivated // only for reschedule
 	ScheduleResponseStatusUnknown
 )

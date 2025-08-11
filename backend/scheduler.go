@@ -97,14 +97,95 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 	return result
 }
 
-func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
-	scheduler := &backendState.scheduler
+func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *BackendState) (*Task, types.ScheduleResponseStatus) {
+	backendMessages := backendState.messages
 
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
+	var extractedTask *Task
 
-	// Calculate internal properties including the task's hash. Skip scheduling if we already have it.
-	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
+	// First look in memory
+	{
+		var indexToRemove int
+		for index, currTask := range scheduler.tasks {
+			if currTask.Computed.Id == taskId {
+				if currTask.Dynamic.IsDeactivated {
+					indexToRemove = index
+					extractedTask = currTask
+					break
+				} else {
+					return nil, types.ScheduleResponseStatusTaskNotDeactivated
+				}
+			}
+		}
+
+		if extractedTask != nil {
+			// Remove task from the list and return it
+			newCount := len(scheduler.tasks) - 1
+			scheduler.tasks[indexToRemove] = scheduler.tasks[newCount]
+			scheduler.tasks = scheduler.tasks[:newCount]
+			return extractedTask, types.ScheduleResponseStatusSuccess
+		}
+
+	}
+
+	// If we're here, we didn't find a task in memory. Look in ndjson file. We'll have to remove extracted task from the file,
+	// so we're also opening temporary output file and writing to it all lines except for the removed task. Then we'll copy
+	// it to be the new ndjson file.
+	{
+		inputFilePath := backendState.files.GetDeactivatedTasksFile()
+		inputFile, err := os.OpenFile(inputFilePath, os.O_RDONLY, 0644)
+		if err != nil {
+			backendMessages.AddF(BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
+			return nil, types.ScheduleResponseStatusTaskNotFound
+		}
+		defer inputFile.Close()
+
+		outputFile, err := backendState.files.GetTmpFile()
+		outputFilePath := outputFile.Name()
+		defer os.Remove(outputFilePath)
+		defer outputFile.Close()
+		if err != nil {
+			backendMessages.AddF(BackendMessageError, nil, "Failed opening tmp file: %s", err.Error())
+			return nil, types.ScheduleResponseStatusTaskNotFound
+		}
+
+		scanner := bufio.NewScanner(inputFile)
+		for scanner.Scan() {
+			line := scanner.Bytes()
+			var currentTask Task
+			err := json.Unmarshal(line, &currentTask)
+			if err != nil {
+				backendMessages.AddF(BackendMessageError, nil, "Failed decoding a task from %s: %s", inputFilePath, err.Error())
+				continue
+			}
+
+			if extractedTask == nil && currentTask.Computed.Id == taskId {
+				extractedTask = &currentTask
+			} else {
+				line = append(line, '\n')
+				if err := common.WriteBytesToWriter(outputFile, line); err != nil {
+					backendMessages.AddF(BackendMessageError, nil, "Failed writing to tmp file")
+					return nil, types.ScheduleResponseStatusTaskNotFound
+				}
+			}
+		}
+
+		if extractedTask != nil {
+			inputFile.Close()
+			outputFile.Close()
+			if err := common.CopyFile(outputFilePath, inputFilePath); err != nil {
+				backendMessages.AddF(BackendMessageError, nil, "Failed copying tmp file to ndjson")
+				return nil, types.ScheduleResponseStatusTaskNotFound
+			}
+
+			return extractedTask, types.ScheduleResponseStatusSuccess
+		}
+	}
+
+	// If we're here, we didn't find the task neither in memory nor in ndjson file
+	return nil, types.ScheduleResponseStatusTaskNotFound
+}
+
+func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleResponseStatus {
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated {
 			if currTask.Computed.Hash == newTask.Computed.Hash {
@@ -116,7 +197,10 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleRe
 		}
 	}
 
-	// Ensure display is correct
+	return types.ScheduleResponseStatusSuccess
+}
+
+func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
 	case types.DisplaySelectionTypeXorg:
@@ -130,9 +214,55 @@ func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleRe
 		backendState.messages.Add(BackendMessageError, newTask, "Invalid display type")
 	}
 
-	// Increment id assigned for new tasks.
+	return types.ScheduleResponseStatusSuccess
+}
+
+func TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+	// TODO never lock in the scheduler methods, require caller to do it
+	scheduler := &backendState.scheduler
+
+	scheduler.lock.Lock()
+	defer scheduler.lock.Unlock()
+
+	// Calculate internal properties
+	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
 	scheduler.currentId++
 
+	// Do not schedule, if a similar task is already running
+	if status := scheduler.CheckForTaskConflict(newTask); status != types.ScheduleResponseStatusSuccess {
+		return status
+	}
+
+	// Ensure display is correct
+	if status := scheduler.CheckForDisplay(newTask, backendState); status != types.ScheduleResponseStatusSuccess {
+		return status
+	}
+
+	// Schedule
+	scheduler.tasks = append(scheduler.tasks, newTask)
+	backendState.StartGoroutine(func() {
+		ExecuteTask(newTask, backendState)
+	})
+	return types.ScheduleResponseStatusSuccess
+}
+
+func TryRescheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+	scheduler := &backendState.scheduler
+
+	// Calculate internal properties
+	newTask.Init(newTask.Computed.Id, backendState.files.GetTaskLogFile(newTask.Computed.Id))
+
+	// Do not schedule, if a similar task is already running
+	if status := scheduler.CheckForTaskConflict(newTask); status != types.ScheduleResponseStatusSuccess {
+		return status
+	}
+
+	// Ensure display is correct
+	if status := scheduler.CheckForDisplay(newTask, backendState); status != types.ScheduleResponseStatusSuccess {
+		return status
+	}
+
+	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	backendState.StartGoroutine(func() {
 		ExecuteTask(newTask, backendState)

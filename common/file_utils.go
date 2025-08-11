@@ -81,3 +81,22 @@ func FileExists(filename string) bool {
 	}
 	return err == nil
 }
+
+func CopyFile(src string, dst string) error {
+	in, err := os.OpenFile(src, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	return nil
+}

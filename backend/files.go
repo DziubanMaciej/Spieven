@@ -11,6 +11,7 @@ import (
 
 type FilePathProvider struct {
 	CacheDir               string
+	TmpDir                 string
 	TaskLogsDir            string
 	DeactivatedTasksFile   string
 	BackendMessagesLogFile string
@@ -26,6 +27,12 @@ func CreateFilePathProvider() (*FilePathProvider, error) {
 
 	cacheDir := path.Join(homeDir, ".cache", "Spieven")
 	err := EnsureDirExistsAndIsEmpty(cacheDir)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpDir := path.Join(cacheDir, "tmp")
+	err = EnsureDirExistsAndIsEmpty(tmpDir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,10 +57,15 @@ func CreateFilePathProvider() (*FilePathProvider, error) {
 
 	return &FilePathProvider{
 		CacheDir:               cacheDir,
+		TmpDir:                 tmpDir,
 		TaskLogsDir:            taskLogsDir,
 		DeactivatedTasksFile:   deactivatedTasksFile,
 		BackendMessagesLogFile: backendMessagesLogFile,
 	}, nil
+}
+
+func (files *FilePathProvider) GetTmpFile() (*os.File, error) {
+	return os.CreateTemp(files.TmpDir, "")
 }
 
 func (files *FilePathProvider) GetDeactivatedTasksFile() string {

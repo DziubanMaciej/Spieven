@@ -97,6 +97,15 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
+		case packet.PacketIdReschedule:
+			request, err := packet.DecodeReschedulePacket(requestPacket)
+			if err != nil {
+				return
+			}
+			err = CmdReschedule(backendState, connection, request)
+			if err != nil {
+				return
+			}
 		default:
 			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return

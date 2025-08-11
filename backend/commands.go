@@ -227,3 +227,49 @@ func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request
 
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
+
+func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, request packet.RescheduleRequestBody) error {
+	scheduler := &backendState.scheduler
+
+	var response packet.RescheduleResponseBody
+
+	scheduler.lock.Lock()
+
+	task, status := scheduler.ExtractDeactivatedTask(request.TaskId, backendState)
+	if status == types.ScheduleResponseStatusSuccess {
+		response.Status = TryRescheduleTask(task, backendState)
+		response.LogFile = task.Computed.OutFilePath
+		response.Id = task.Computed.Id
+	} else {
+		response.Status = status
+
+	}
+
+	scheduler.lock.Unlock()
+
+	switch response.Status {
+	case types.ScheduleResponseStatusSuccess:
+		backendState.messages.AddF(BackendMessageInfo, task, "Rescheduled task %v", request.TaskId)
+	case types.ScheduleResponseStatusAlreadyRunning:
+		backendState.messages.Add(BackendMessageError, nil, "Task already running")
+	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+		backendState.messages.AddF(BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
+	case types.ScheduleResponseStatusInvalidDisplay:
+		backendState.messages.Add(BackendMessageError, nil, "Task uses invalid display")
+	case types.ScheduleResponseStatusTaskNotFound:
+		backendState.messages.AddF(BackendMessageError, nil, "Task %v not found", request.TaskId)
+	case types.ScheduleResponseStatusTaskNotDeactivated:
+		backendState.messages.AddF(BackendMessageError, nil, "Task %v is active, cannot reschedule", request.TaskId)
+	default:
+		// Shouldn't happen, but let's handle it gracefully
+		backendState.messages.Add(BackendMessageError, nil, "Unknown rescheduling error")
+		response.Status = types.ScheduleResponseStatusUnknown
+	}
+
+	responsePacket, err := packet.EncodeRescheduleResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return packet.SendPacket(frontendConnection, responsePacket)
+}
