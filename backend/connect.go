@@ -21,7 +21,7 @@ func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
 	}
 	handshakeValue := uint64(request)
 
-	if backendState.handshakeValue == handshakeValue {
+	if backendState.handshakeValue != handshakeValue {
 		return fmt.Errorf("invalid handshake value: expected %v, got %v", backendState.handshakeValue, handshakeValue)
 	}
 
