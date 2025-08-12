@@ -60,5 +60,5 @@ Download from [GitHub releases](https://github.com/DziubanMaciej/Spieven/release
 
 ## From source
 Install `go` compiler toolchain. Refer to your distribution's package manager.
-Run `go build` and grab the `spieven` binary file.
-Alternatively, add `$GOBIN` into your `PATH` and run `go install`, which will build and install `spieven` binary in `$GOBIN`.
+Run `go build -tags user` and grab the `spieven` binary file.
+Alternatively, add `$GOPATH/bin` into your `PATH` and run `go install -tags user`, which will build and install `spieven` binary in `$GOPATH/bin`.

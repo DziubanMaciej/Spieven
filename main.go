@@ -5,6 +5,7 @@ import (
 	"os"
 	"spieven/backend"
 	"spieven/common"
+	"spieven/common/buildopts"
 	"spieven/frontend"
 	"spieven/internal"
 
@@ -12,6 +13,8 @@ import (
 )
 
 func main() {
+	buildopts.PrintBuildFlavourNotice()
+
 	rootCmd := &cobra.Command{
 		Use:          "spieven",
 		Short:        "Spieven is a process spieven for Linux",
