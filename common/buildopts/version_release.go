@@ -3,3 +3,4 @@
 package buildopts
 
 const VersionSuffix = ""
+const AutorunBackend = true
