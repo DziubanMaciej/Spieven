@@ -29,7 +29,7 @@ func CliUsageFunc(c *cobra.Command) error {
 		return fmt.Sprintf(formattedString, s)
 	}
 
-	fmt.Fprint(w, "UsageXD:")
+	fmt.Fprint(w, "Usage:")
 	if c.Runnable() {
 		fmt.Fprintf(w, "\n  %s", c.UseLine())
 	}
