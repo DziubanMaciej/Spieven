@@ -10,6 +10,7 @@ func CreateCliCommand() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "serve [OPTIONS...]",
 		Short: "Launch Spieven backend engine.",
+		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunServer(frequentTrim, remote)
 		},

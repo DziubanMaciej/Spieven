@@ -16,6 +16,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd := &cobra.Command{
 			Use:   "log",
 			Short: "Display a backend log",
+			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				connection, err := ConnectToBackend()
 				if err == nil {
@@ -42,6 +43,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd := &cobra.Command{
 			Use:   "list [OPTIONS...]",
 			Short: "Display a list of running tasks",
+			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				filter := packet.ListRequestBodyFilter{
 					IdFilter:      idFilter,
@@ -165,6 +167,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd := &cobra.Command{
 			Use:   "check",
 			Short: "Checks whether the backend is running and can be connected to",
+			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				connection, err := ConnectToBackend()
 				if err == nil {
