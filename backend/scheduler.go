@@ -470,7 +470,20 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 			if commandSuccess {
 				delay = task.DelayAfterSuccessMs
 			}
-			InterruptibleSleep(time.Millisecond*time.Duration(delay), task.Channels.RefreshChannel)
+
+			// Start a timer
+			timer := time.NewTimer(time.Millisecond * time.Duration(delay))
+			defer timer.Stop()
+
+			// Wait for either the timer or the stop channel
+			select {
+			case <-timer.C:
+			case <-task.Channels.RefreshChannel:
+			case reason := <-task.Channels.StopChannel:
+				logF(LogDeactivation, "Task killed (%v).", reason)
+			case <-cmdContext.Done():
+				logF(LogTask|LogDeactivation, "Backend killed.")
+			}
 		}
 	}
 
@@ -478,16 +491,4 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	backendState.scheduler.lock.Lock()
 	task.Dynamic = shadowDynamicState
 	backendState.scheduler.lock.Unlock()
-}
-
-func InterruptibleSleep(d time.Duration, refreshChannel chan struct{}) {
-	// Start a timer
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-
-	// Wait for either the timer or the stop channel
-	select {
-	case <-timer.C:
-	case <-refreshChannel:
-	}
 }
