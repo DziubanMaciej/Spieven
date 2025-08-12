@@ -38,7 +38,7 @@ func ConnectToBackend() (net.Conn, error) {
 		}
 		connection, err = common.TryCallWithTimeouts(dial, time.Millisecond*1300, 13)
 		if err != nil {
-			return nil, errors.New("cannot connect to Spieven backend even after starting it in backgroun")
+			return nil, errors.New("cannot connect to Spieven backend even after starting it in background")
 		}
 	}
 

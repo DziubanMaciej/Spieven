@@ -84,7 +84,7 @@ func CmdList(
 	if jsonOutput {
 		output, err := json.MarshalIndent(response, "", "    ")
 		if err != nil {
-			return errors.New("task has not finished execution yet")
+			return errors.New("failed generating json report")
 		}
 		fmt.Println(string(output))
 	} else {
