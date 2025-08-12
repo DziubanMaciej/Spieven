@@ -100,6 +100,7 @@ func CmdList(
 			fmt.Printf("  Cmdline:                %v\n", task.Cmdline)
 			fmt.Printf("  Cwd:                    %v\n", task.Cwd)
 			fmt.Printf("  Display:                %v\n", task.Display.ComputeDisplayLabelLong())
+			fmt.Printf("  Tags:                   %v\n", task.Tags)
 			fmt.Printf("  OutFilePath:            %v\n", task.OutFilePath)
 			fmt.Printf("  MaxSubsequentFailures:  %v\n", task.MaxSubsequentFailures)
 			fmt.Printf("  RunCount:               %v\n", task.RunCount)
@@ -123,7 +124,9 @@ func CmdSchedule(
 	display types.DisplaySelection,
 	rerunDelayAfterSuccess int,
 	rerunDelayAfterFailure int,
-	maxSubsequentFailures int) (*packet.ScheduleResponseBody, error) {
+	maxSubsequentFailures int,
+	tags []string,
+) (*packet.ScheduleResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -147,6 +150,7 @@ func CmdSchedule(
 		DelayAfterSuccessMs:   rerunDelayAfterSuccess,
 		DelayAfterFailureMs:   rerunDelayAfterFailure,
 		MaxSubsequentFailures: maxSubsequentFailures,
+		Tags:                  tags,
 	}
 
 	err = ValidateScheduleRequestBody(&body)

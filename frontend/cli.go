@@ -36,14 +36,16 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			includeDeactivated       bool
 			includeDeactivatedAlways bool
 			jsonOutput               bool
+			tags                     []string
 		)
 		cmd := &cobra.Command{
 			Use:   "list [OPTIONS...]",
 			Short: "Display a list of running tasks",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				filter := packet.ListRequestBodyFilter{
-					IdFilter:   idFilter,
-					NameFilter: nameFilter,
+					IdFilter:      idFilter,
+					NameFilter:    nameFilter,
+					AllTagsFilter: tags,
 				}
 				if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
 					return err
@@ -61,6 +63,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
 		cmd.Flags().StringVarP(&nameFilter, "name", "n", "", "Filter tasks by friendly name")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
+		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
 		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")
 		cmd.Flags().BoolVarP(&includeDeactivatedAlways, "include-deactivated-always", "D", false, "Include deactivated tasks as well as active ones")
 		cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Display output as json.")
@@ -76,6 +79,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			rerunDelayAfterSuccess int
 			rerunDelayAfterFailure int
 			maxSubsequentFailures  int
+			tags                   []string
 		)
 
 		longDescription := "Schedule a new task. By default all option arguments (starting with hyphens) will be interpreted " +
@@ -106,7 +110,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
-						displaySelection, rerunDelayAfterSuccess, rerunDelayAfterFailure, maxSubsequentFailures)
+						displaySelection, rerunDelayAfterSuccess, rerunDelayAfterFailure, maxSubsequentFailures, tags)
 					if err != nil {
 						return err
 					}
@@ -118,7 +122,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 						}
 					}
 				}
-				return nil
+				return err
 			},
 		}
 		cmd.Flags().StringVarP(&friendlyName, "friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
@@ -128,6 +132,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&rerunDelayAfterSuccess, "delay-after-success", "s", 0, "Delay in milliseconds before rerunning scheduled command after a successful execution")
 		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")
 		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
+		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Specify comma-separated list of tags for the task. Task do not have any effect, but they can be used to filter tasks.")
+
 		commands = append(commands, cmd)
 	}
 

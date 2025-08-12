@@ -9,10 +9,12 @@ type ListRequestBodyFilter struct {
 	IdFilter      int
 	NameFilter    string
 	DisplayFilter types.DisplaySelection
+	AllTagsFilter []string
 
 	HasIdFilter      bool `json:"-"`
 	HasNameFilter    bool `json:"-"`
 	HasDisplayFilter bool `json:"-"`
+	HasAllTagsFilter bool `json:"-"`
 	HasAnyFilter     bool `json:"-"`
 }
 
@@ -20,7 +22,8 @@ func (filter *ListRequestBodyFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
 	filter.HasNameFilter = filter.NameFilter != ""
 	filter.HasDisplayFilter = filter.DisplayFilter.Type != types.DisplaySelectionTypeNone
-	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasDisplayFilter
+	filter.HasAllTagsFilter = len(filter.AllTagsFilter) > 0
+	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasDisplayFilter || filter.HasAllTagsFilter
 }
 
 type ListRequestBody struct {
@@ -48,6 +51,7 @@ type ListResponseBodyItem struct {
 	IsDeactivated          bool
 	DeactivationReason     string
 	FriendlyName           string
+	Tags                   []string
 	RunCount               int
 	FailureCount           int
 	SubsequentFailureCount int

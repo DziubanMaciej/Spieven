@@ -12,6 +12,7 @@ type ScheduleRequestBody struct {
 	DelayAfterSuccessMs   int
 	DelayAfterFailureMs   int
 	MaxSubsequentFailures int
+	Tags                  []string
 }
 
 func EncodeSchedulePacket(data ScheduleRequestBody) (Packet, error) {

@@ -1,23 +1,44 @@
 package frontend
 
 import (
+	"errors"
 	"fmt"
 	"spieven/common/packet"
 	"unicode"
 )
 
-func ValidateString(val string, stringName string) error {
+type ValidationType byte
+
+const (
+	ValidationTypeGeneric ValidationType = iota
+	ValidationTypeAlphanumeric
+)
+
+func ValidateString(val string, stringName string, validationType ValidationType) error {
 	for _, r := range val {
-		if unicode.IsControl(r) || r == '"' || r == '\'' || r == '\\' {
-			return fmt.Errorf("%v contains invalid characters", stringName)
+		switch validationType {
+		case ValidationTypeGeneric:
+			if unicode.IsControl(r) {
+				return fmt.Errorf("%v contains invalid characters. Whitespace and control characters are forbidden", stringName)
+			}
+		case ValidationTypeAlphanumeric:
+			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-') {
+				fmt.Println(stringName)
+				fmt.Println(val)
+				fmt.Println(r)
+				return fmt.Errorf("%v contains invalid characters. Only alphanumeric characters, hyphens and underscore are allowed", stringName)
+			}
+		default:
+			return errors.New("invalid validation type")
 		}
+
 	}
 	return nil
 }
 
-func ValidateStrings(val []string, stringName string) error {
+func ValidateStrings(val []string, stringName string, validationType ValidationType) error {
 	for _, str := range val {
-		err := ValidateString(str, stringName)
+		err := ValidateString(str, stringName, validationType)
 		if err != nil {
 			return err
 		}
@@ -26,16 +47,19 @@ func ValidateStrings(val []string, stringName string) error {
 }
 
 func ValidateScheduleRequestBody(val *packet.ScheduleRequestBody) error {
-	if err := ValidateString(val.Cwd, "field cwd"); err != nil {
+	if err := ValidateString(val.Cwd, "field cwd", ValidationTypeGeneric); err != nil {
 		return err
 	}
-	if err := ValidateString(val.FriendlyName, "field friendlyName"); err != nil {
+	if err := ValidateString(val.FriendlyName, "field friendlyName", ValidationTypeAlphanumeric); err != nil {
 		return err
 	}
-	if err := ValidateStrings(val.Cmdline, "field cmdline"); err != nil {
+	if err := ValidateStrings(val.Cmdline, "field cmdline", ValidationTypeGeneric); err != nil {
 		return err
 	}
-	if err := ValidateStrings(val.Env, "field env"); err != nil {
+	if err := ValidateStrings(val.Env, "field env", ValidationTypeGeneric); err != nil {
+		return err
+	}
+	if err := ValidateStrings(val.Tags, "field tags", ValidationTypeAlphanumeric); err != nil {
 		return err
 	}
 	return nil

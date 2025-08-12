@@ -28,6 +28,7 @@ type Task struct {
 	FriendlyName          string
 	CaptureStdout         bool
 	Display               types.DisplaySelection
+	Tags                  []string
 
 	Computed struct {
 		Id          int
@@ -108,6 +109,7 @@ func (task *Task) ComputeHashes() (int, int) {
 	writeInt(task.MaxSubsequentFailures)
 	writeString(task.FriendlyName)
 	writeBool(task.CaptureStdout)
+	writeStrings(task.Tags)
 	writeInt(int(task.Display.Type))
 	writeString(task.Display.Name)
 	hash1 := int(h.Sum32())

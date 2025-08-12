@@ -2,6 +2,7 @@ package backend
 
 import (
 	"net"
+	"spieven/common"
 	"spieven/common/packet"
 	"spieven/common/types"
 )
@@ -44,6 +45,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 			IsDeactivated:          task.Dynamic.IsDeactivated,
 			DeactivationReason:     task.Dynamic.DeactivatedReason,
 			FriendlyName:           task.FriendlyName,
+			Tags:                   task.Tags,
 			RunCount:               task.Dynamic.RunCount,
 			FailureCount:           task.Dynamic.FailureCount,
 			SubsequentFailureCount: task.Dynamic.SubsequentFailureCount,
@@ -73,6 +75,12 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	if request.Filter.HasDisplayFilter {
 		prev := selector
 		selector = func(task *Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
+	}
+	if request.Filter.HasAllTagsFilter {
+		prev := selector
+		selector = func(task *Task) bool {
+			return prev(task) && common.ContainsAll(request.Filter.AllTagsFilter, task.Tags)
+		}
 	}
 
 	// Prepare helper functions to list tasks from memory or from disc. The in-memory list can contain both active tasks
@@ -132,6 +140,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		FriendlyName:          request.FriendlyName,
 		CaptureStdout:         request.CaptureStdout,
 		Display:               request.Display,
+		Tags:                  request.Tags,
 	}
 
 	scheduler.lock.Lock()
