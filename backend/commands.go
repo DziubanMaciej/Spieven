@@ -28,6 +28,7 @@ func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 func CmdList(backendState *BackendState, frontendConnection net.Conn, request packet.ListRequestBody) error {
 	scheduler := &backendState.scheduler
 
+	namesMap := make(map[string][]int) // this map store a list of indices of task for each friendlyName
 	response := make(packet.ListResponseBody, 0)
 	appendTask := func(task *Task) {
 		stdout, err := task.ReadLastStdout()
@@ -54,6 +55,11 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 			LastStdout:             stdout,
 			HasLastStdout:          hasStdout,
 		}
+
+		if request.UniqueNames {
+			namesMap[item.FriendlyName] = append(namesMap[item.FriendlyName], len(response))
+		}
+
 		response = append(response, item)
 	}
 
@@ -118,6 +124,26 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	}
 
 	scheduler.lock.Unlock()
+
+	// If unique names were requested, look through the map and for each name that has multiple tasks select the one with
+	// the highest id. Remove all others.
+	if request.UniqueNames {
+		newResponse := make(packet.ListResponseBody, 0)
+		for _, indices := range namesMap {
+			selectedItem := response[indices[0]]
+
+			for _, taskIndex := range indices {
+				currentItem := response[taskIndex]
+				if currentItem.Id > selectedItem.Id {
+					selectedItem = currentItem
+				}
+			}
+
+			newResponse = append(newResponse, selectedItem)
+		}
+
+		response = newResponse
+	}
 
 	reponsePacket, err := packet.EncodeListResponsePacket(response)
 	if err != nil {

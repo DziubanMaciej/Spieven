@@ -46,11 +46,14 @@ func CmdList(
 	filter packet.ListRequestBodyFilter,
 	includeDeactivated bool,
 	includeDeactivatedAlways bool,
-	jsonOutput bool) error {
+	jsonOutput bool,
+	uniqueNames bool,
+) error {
 	request := packet.ListRequestBody{
 		Filter:                   filter,
 		IncludeDeactivated:       includeDeactivated,
 		IncludeDeactivatedAlways: includeDeactivatedAlways,
+		UniqueNames:              uniqueNames,
 	}
 
 	requestPacket, err := packet.EncodeListPacket(request)

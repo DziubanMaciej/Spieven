@@ -30,6 +30,7 @@ type ListRequestBody struct {
 	Filter                   ListRequestBodyFilter
 	IncludeDeactivated       bool
 	IncludeDeactivatedAlways bool
+	UniqueNames              bool
 }
 
 func EncodeListPacket(body ListRequestBody) (Packet, error) {
