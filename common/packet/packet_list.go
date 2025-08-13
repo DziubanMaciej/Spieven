@@ -7,12 +7,12 @@ import (
 
 type ListRequestBodyFilter struct {
 	IdFilter      int
-	NameFilter    string
+	AnyNameFilter []string
 	DisplayFilter types.DisplaySelection
 	AllTagsFilter []string
 
 	HasIdFilter      bool `json:"-"`
-	HasNameFilter    bool `json:"-"`
+	HasAnyNameFilter bool `json:"-"`
 	HasDisplayFilter bool `json:"-"`
 	HasAllTagsFilter bool `json:"-"`
 	HasAnyFilter     bool `json:"-"`
@@ -20,10 +20,10 @@ type ListRequestBodyFilter struct {
 
 func (filter *ListRequestBodyFilter) Derive() {
 	filter.HasIdFilter = filter.IdFilter != math.MaxInt
-	filter.HasNameFilter = filter.NameFilter != ""
+	filter.HasAnyNameFilter = len(filter.AnyNameFilter) > 0
 	filter.HasDisplayFilter = filter.DisplayFilter.Type != types.DisplaySelectionTypeNone
 	filter.HasAllTagsFilter = len(filter.AllTagsFilter) > 0
-	filter.HasAnyFilter = filter.HasIdFilter || filter.HasNameFilter || filter.HasDisplayFilter || filter.HasAllTagsFilter
+	filter.HasAnyFilter = filter.HasIdFilter || filter.HasAnyNameFilter || filter.HasDisplayFilter || filter.HasAllTagsFilter
 }
 
 type ListRequestBody struct {

@@ -32,7 +32,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 	{
 		var (
 			idFilter                 int
-			nameFilter               string
+			anyNameFilter            []string
 			display                  string
 			includeDeactivated       bool
 			includeDeactivatedAlways bool
@@ -47,7 +47,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				filter := packet.ListRequestBodyFilter{
 					IdFilter:      idFilter,
-					NameFilter:    nameFilter,
+					AnyNameFilter: anyNameFilter,
 					AllTagsFilter: tags,
 				}
 				if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
@@ -64,7 +64,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			},
 		}
 		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
-		cmd.Flags().StringVarP(&nameFilter, "name", "n", "", "Filter tasks by friendly name")
+		cmd.Flags().StringSliceVarP(&anyNameFilter, "names", "n", []string{}, "Filter tasks by friendly names. Multiple names can be specified (comma separated) to allow multiple results")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
 		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")

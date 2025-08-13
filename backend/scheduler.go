@@ -420,7 +420,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		case exitCode := <-commandResultChannel:
 			// Command ended normally
 			logF(LogTask, "Command ended with code %v.", exitCode)
-			shadowDynamicState.LastExitValue = exitCode
+			shadowDynamicState.LastExitValue = exitCode // TODO this is wrong for test_script.sh, 127 is returned
 			if exitCode == 0 {
 				commandSuccess = true
 			}

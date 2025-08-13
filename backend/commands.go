@@ -74,9 +74,11 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		prev := selector
 		selector = func(task *Task) bool { return prev(task) && task.Computed.Id == request.Filter.IdFilter }
 	}
-	if request.Filter.HasNameFilter {
+	if request.Filter.HasAnyNameFilter {
 		prev := selector
-		selector = func(task *Task) bool { return prev(task) && task.FriendlyName == request.Filter.NameFilter }
+		selector = func(task *Task) bool {
+			return prev(task) && common.Contains(request.Filter.AnyNameFilter, task.FriendlyName)
+		}
 	}
 	if request.Filter.HasDisplayFilter {
 		prev := selector
