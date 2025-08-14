@@ -9,6 +9,9 @@ import (
 	"spieven/common"
 )
 
+// TODO add port number to file path, so multiple spievens can coexist (i.e. release + dev)
+// TODO cleanup files after closing spieven
+
 type FilePathProvider struct {
 	CacheDir               string
 	TmpDir                 string

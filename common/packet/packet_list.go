@@ -5,6 +5,7 @@ import (
 	"spieven/common/types"
 )
 
+// TODO use these filters for refreshing as well
 type ListRequestBodyFilter struct {
 	IdFilter      int
 	AnyNameFilter []string
