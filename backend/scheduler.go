@@ -448,7 +448,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		// Update execution and failure counts
 		shadowDynamicState.RunCount++
 		if commandSuccess {
-			shadowDynamicState.FailureCount = 0
+			shadowDynamicState.SubsequentFailureCount = 0
 		} else {
 			shadowDynamicState.FailureCount++
 			shadowDynamicState.SubsequentFailureCount++
