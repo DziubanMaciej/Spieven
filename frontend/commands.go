@@ -76,14 +76,6 @@ func CmdList(
 		return err
 	}
 
-	if len(response) == 0 {
-		if filter.HasAnyFilter {
-			return errors.New("no tasks match the requested criteria")
-		} else {
-			return errors.New("no tasks found")
-		}
-	}
-
 	if jsonOutput {
 		output, err := json.MarshalIndent(response, "", "    ")
 		if err != nil {
@@ -91,6 +83,15 @@ func CmdList(
 		}
 		fmt.Println(string(output))
 	} else {
+		if len(response) == 0 {
+			if filter.HasAnyFilter {
+				fmt.Println("no tasks match the requested criteria")
+			} else {
+				fmt.Println("no tasks found")
+			}
+			return nil
+		}
+
 		for i, task := range response {
 			activeStr := "Yes"
 			if task.IsDeactivated {
