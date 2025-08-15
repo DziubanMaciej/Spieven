@@ -42,6 +42,7 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 		messages: messages,
 	}
 	backendState.StartTrimGoroutine(frequentTrim)
+	backendState.StartCleanupGorotuine()
 
 	return &backendState, nil
 }
@@ -73,4 +74,12 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 		}
 	}
 	state.sync.StartGoroutine(body)
+}
+
+func (state *BackendState) StartCleanupGorotuine() {
+	body := func() {
+		state.files.Cleanup()
+		state.messages.Cleanup()
+	}
+	state.sync.StartGoroutineAfterContextKill(body)
 }

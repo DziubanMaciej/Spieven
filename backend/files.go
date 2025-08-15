@@ -9,8 +9,6 @@ import (
 	"spieven/common"
 )
 
-// TODO cleanup files after closing spieven
-
 type FilePathProvider struct {
 	CacheDir               string
 	TmpDir                 string
