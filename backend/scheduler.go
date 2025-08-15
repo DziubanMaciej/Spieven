@@ -258,7 +258,7 @@ func (scheduler *Scheduler) TryScheduleTask(
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, goroutines, messages)
+		ExecuteTask(newTask, backendState, &scheduler.lock, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -287,7 +287,7 @@ func (scheduler *Scheduler) TryRescheduleTask(
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, goroutines, messages)
+		ExecuteTask(newTask, backendState, &scheduler.lock, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -305,8 +305,10 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectio
 	}
 }
 
-func ExecuteTask(task *Task,
+func ExecuteTask(
+	task *Task,
 	backendState *BackendState,
+	schedulerLock *common.CheckedLock,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) {
@@ -323,9 +325,9 @@ func ExecuteTask(task *Task,
 	// copy and assign it to the actual task struct under a lock in one go every time something changes. Technically
 	// this initial copy doesn't need a lock, because no other routine than ExecuteTask should ever change task.Dynamic.
 	// But, for completeness we're still locking.
-	backendState.scheduler.lock.Lock()
+	schedulerLock.Lock()
 	shadowDynamicState := task.Dynamic
-	backendState.scheduler.lock.Unlock()
+	schedulerLock.Unlock()
 
 	// Logging in this function is a bit complicated. We have 3 possible places where logs can go:
 	//  1. FileLogger - per-task file with detailed info about the current task as well as stdout/stderr. All messages
@@ -482,9 +484,9 @@ func ExecuteTask(task *Task,
 		}
 
 		// Update dynamic state
-		backendState.scheduler.lock.Lock()
+		schedulerLock.Lock()
 		task.Dynamic = shadowDynamicState
-		backendState.scheduler.lock.Unlock()
+		schedulerLock.Unlock()
 
 		// Perform delay between command executions
 		if !shadowDynamicState.IsDeactivated {
@@ -510,7 +512,7 @@ func ExecuteTask(task *Task,
 	}
 
 	// Update dynamic state in case we broke from the loop
-	backendState.scheduler.lock.Lock()
+	schedulerLock.Lock()
 	task.Dynamic = shadowDynamicState
-	backendState.scheduler.lock.Unlock()
+	schedulerLock.Unlock()
 }
