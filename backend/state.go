@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"spieven/backend/scheduler"
 	"spieven/common"
 	"spieven/common/buildopts"
 	"time"
@@ -12,7 +13,7 @@ type BackendState struct {
 	sync      *BackendSync
 	files     *FilePathProvider
 	messages  *BackendMessages
-	scheduler Scheduler
+	scheduler scheduler.Scheduler
 	displays  Displays
 
 	handshakeValue uint64
@@ -65,9 +66,9 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
 
-				state.scheduler.lock.Lock()
+				state.scheduler.Lock()
 				state.scheduler.Trim(state.messages, state.files)
-				state.scheduler.lock.Unlock()
+				state.scheduler.Unlock()
 
 				state.displays.Trim()
 			}

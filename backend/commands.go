@@ -3,6 +3,7 @@ package backend
 import (
 	"net"
 	i "spieven/backend/interfaces"
+	"spieven/backend/scheduler"
 	"spieven/common"
 	"spieven/common/packet"
 	"spieven/common/types"
@@ -27,11 +28,12 @@ func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 }
 
 func CmdList(backendState *BackendState, frontendConnection net.Conn, request packet.ListRequestBody) error {
-	scheduler := &backendState.scheduler
+	sched := &backendState.scheduler
 
 	namesMap := make(map[string][]int) // this map store a list of indices of task for each friendlyName
 	response := make(packet.ListResponseBody, 0)
-	appendTask := func(task *Task) {
+
+	appendTask := func(task *scheduler.Task) {
 		stdout, err := task.ReadLastStdout()
 		hasStdout := true
 		if err != nil {
@@ -64,30 +66,30 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		response = append(response, item)
 	}
 
-	scheduler.lock.Lock()
+	sched.Lock()
 
 	// Prepare a selector function, that returns true when a task should be sent back to the frontend.
 	// By default we want to return all of them, but then we compose additional checks depending on
 	// the frontend request.
-	selector := func(task *Task) bool { return true }
+	selector := func(task *scheduler.Task) bool { return true }
 	request.Filter.Derive()
 	if request.Filter.HasIdFilter {
 		prev := selector
-		selector = func(task *Task) bool { return prev(task) && task.Computed.Id == request.Filter.IdFilter }
+		selector = func(task *scheduler.Task) bool { return prev(task) && task.Computed.Id == request.Filter.IdFilter }
 	}
 	if request.Filter.HasAnyNameFilter {
 		prev := selector
-		selector = func(task *Task) bool {
+		selector = func(task *scheduler.Task) bool {
 			return prev(task) && common.Contains(request.Filter.AnyNameFilter, task.FriendlyName)
 		}
 	}
 	if request.Filter.HasDisplayFilter {
 		prev := selector
-		selector = func(task *Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
+		selector = func(task *scheduler.Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
 	}
 	if request.Filter.HasAllTagsFilter {
 		prev := selector
-		selector = func(task *Task) bool {
+		selector = func(task *scheduler.Task) bool {
 			return prev(task) && common.ContainsAll(request.Filter.AllTagsFilter, task.Tags)
 		}
 	}
@@ -95,14 +97,14 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	// Prepare helper functions to list tasks from memory or from disc. The in-memory list can contain both active tasks
 	// and already deactivated tasks that were not yet paged to a file.
 	getTasksFromMemory := func(allowDeactivated bool) {
-		for _, task := range scheduler.tasks {
+		for _, task := range sched.GetTasks() {
 			if selector(task) && (allowDeactivated || !task.Dynamic.IsDeactivated) {
 				appendTask(task)
 			}
 		}
 	}
 	getTasksFromDeactivatedFile := func() {
-		tasks := scheduler.ReadTrimmedTasks(backendState.messages, backendState.files)
+		tasks := sched.ReadTrimmedTasks(backendState.messages, backendState.files)
 		for _, task := range tasks {
 			if selector(task) {
 				appendTask(task)
@@ -126,7 +128,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		getTasksFromMemory(false)
 	}
 
-	scheduler.lock.Unlock()
+	sched.Unlock()
 
 	// If unique names were requested, look through the map and for each name that has multiple tasks select the one with
 	// the highest id. Remove all others.
@@ -157,9 +159,9 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 }
 
 func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleRequestBody) error {
-	scheduler := &backendState.scheduler
+	sched := &backendState.scheduler
 
-	task := Task{
+	task := scheduler.Task{
 		Cmdline:               request.Cmdline,
 		Cwd:                   request.Cwd,
 		DelayAfterSuccessMs:   request.DelayAfterSuccessMs,
@@ -172,9 +174,9 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 		Tags:                  request.Tags,
 	}
 
-	scheduler.lock.Lock()
-	responseStatus := scheduler.TryScheduleTask(&task, backendState.files, &backendState.displays, backendState.sync, backendState.messages)
-	scheduler.lock.Unlock()
+	sched.Lock()
+	responseStatus := sched.TryScheduleTask(&task, backendState.files, &backendState.displays, backendState.sync, backendState.messages)
+	sched.Unlock()
 
 	response := packet.ScheduleResponseBody{
 		Id:      task.Computed.Id,
@@ -206,15 +208,15 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 }
 
 func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn, request packet.QueryTaskActiveRequestBody) error {
-	scheduler := &backendState.scheduler
+	sched := &backendState.scheduler
 	taskId := int(request)
 
 	var response packet.QueryTaskActiveResponseBody
 
-	scheduler.lock.Lock()
-	if taskId < scheduler.currentId {
+	sched.Lock()
+	if sched.IsValidId(taskId) {
 		response = packet.QueryTaskActiveResponseBodyInactive
-		for _, task := range scheduler.tasks {
+		for _, task := range sched.GetTasks() {
 			if task.Computed.Id == taskId && !task.Dynamic.IsDeactivated {
 				response = packet.QueryTaskActiveResponseBodyActive
 			}
@@ -222,7 +224,7 @@ func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn,
 	} else {
 		response = packet.QueryTaskActiveResponseInvalidTask
 	}
-	scheduler.lock.Unlock()
+	sched.Unlock()
 
 	responsePacket, err := packet.EncodeQueryTaskActiveResponsePacket(response)
 	if err != nil {
@@ -233,11 +235,11 @@ func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn,
 }
 
 func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request packet.RefreshBody) error {
-	scheduler := &backendState.scheduler
+	sched := &backendState.scheduler
 
 	var response packet.RefreshResponseBody
 
-	refresh := func(task *Task) {
+	refresh := func(task *scheduler.Task) {
 		select {
 		case task.Channels.RefreshChannel <- struct{}{}:
 		default:
@@ -245,23 +247,23 @@ func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request
 		response.RefreshedTasksCount++
 	}
 
-	scheduler.lock.Lock()
+	sched.Lock()
 
 	if request.TaskId == -1 {
-		for _, task := range scheduler.tasks {
+		for _, task := range sched.GetTasks() {
 			refresh(task)
 		}
 	} else {
-		for _, task := range scheduler.tasks {
+		for _, task := range sched.GetTasks() {
 			if task.Computed.Id == request.TaskId {
 				refresh(task)
 			}
 		}
 	}
 
-	response.ActiveTasksCount = len(scheduler.tasks)
+	response.ActiveTasksCount = len(sched.GetTasks())
 
-	scheduler.lock.Unlock()
+	sched.Unlock()
 
 	responsePacket, err := packet.EncodeRefreshResponsePacket(response)
 	if err != nil {
@@ -272,15 +274,15 @@ func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request
 }
 
 func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, request packet.RescheduleRequestBody) error {
-	scheduler := &backendState.scheduler
+	sched := &backendState.scheduler
 
 	var response packet.RescheduleResponseBody
 
-	scheduler.lock.Lock()
+	sched.Lock()
 
-	task, status := scheduler.ExtractDeactivatedTask(request.TaskId, backendState, backendState.messages)
+	task, status := sched.ExtractDeactivatedTask(request.TaskId, backendState.files, backendState.messages)
 	if status == types.ScheduleResponseStatusSuccess {
-		response.Status = scheduler.TryRescheduleTask(task, backendState.files, &backendState.displays, backendState.sync, backendState.messages)
+		response.Status = sched.TryRescheduleTask(task, backendState.files, &backendState.displays, backendState.sync, backendState.messages)
 		response.LogFile = task.Computed.OutFilePath
 		response.Id = task.Computed.Id
 	} else {
@@ -288,7 +290,7 @@ func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, requ
 
 	}
 
-	scheduler.lock.Unlock()
+	sched.Unlock()
 
 	switch response.Status {
 	case types.ScheduleResponseStatusSuccess:
