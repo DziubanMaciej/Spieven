@@ -32,7 +32,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	defer connection.Close()
 
 	// Start a routine that will close the connection, when the backend is killed, so that below loop exits
-	backendState.StartGoroutineAfterContextKill(func() {
+	backendState.sync.StartGoroutineAfterContextKill(func() {
 		connection.Close()
 	})
 
@@ -138,7 +138,7 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
 	defer listener.Close()
 
 	// Start a routine that will close the socket, when the backend is killed, so that below loop exits
-	backendState.StartGoroutineAfterContextKill(func() {
+	backendState.sync.StartGoroutineAfterContextKill(func() {
 		listener.Close()
 	})
 
@@ -147,7 +147,7 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			if backendState.IsContextKilled() {
+			if backendState.sync.IsContextKilled() {
 				// We canceled the server for some reason. Not an error. We could store some error
 				// in the future and return it here, though.
 				serverErr = fmt.Errorf("user interrupt detected")
@@ -167,14 +167,14 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
 			}
 		}
 
-		backendState.StartGoroutine(func() {
+		backendState.sync.StartGoroutine(func() {
 			HandleConnection(backendState, connection)
 		})
 	}
 
 	// Notify all goroutines that we have to exit and wait for them.
-	backendState.killContext()
-	backendState.waitGroup.Wait()
+	backendState.sync.killContext()
+	backendState.sync.waitGroup.Wait()
 
 	return serverErr
 }

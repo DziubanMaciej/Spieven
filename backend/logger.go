@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"spieven/backend/interfaces"
 	"spieven/common"
 	"sync"
 )
@@ -38,6 +39,7 @@ func stdoutMessage(message string) LogMessage {
 
 type FileLogger struct {
 	backendState          *BackendState
+	goroutines            interfaces.GoroutineRunner
 	channel               chan LogMessage
 	errorChannel          chan error
 	stdoutFilePathChannel chan string
@@ -49,9 +51,10 @@ type FileLogger struct {
 	_ common.NoCopy
 }
 
-func CreateFileLogger(backendState *BackendState, taskId int, captureStdout bool) FileLogger {
+func CreateFileLogger(backendState *BackendState, goroutines interfaces.GoroutineRunner, taskId int, captureStdout bool) FileLogger {
 	return FileLogger{
 		backendState:          backendState,
+		goroutines:            goroutines,
 		channel:               make(chan LogMessage),
 		errorChannel:          make(chan error, 1),
 		stdoutFilePathChannel: make(chan string),
@@ -84,7 +87,7 @@ func (log *FileLogger) run() error {
 		}
 	}
 
-	log.backendState.StartGoroutine(func() {
+	log.goroutines.StartGoroutine(func() {
 		// Main loop
 		var loggingErr error
 		for {

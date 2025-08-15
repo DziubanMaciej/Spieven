@@ -1,34 +1,32 @@
 package backend
 
 import (
-	"context"
-	"os"
-	"os/signal"
 	"spieven/common"
-	"sync"
-	"syscall"
+	"spieven/common/buildopts"
 	"time"
 )
 
 // BackendState stores global state shared by whole backend, i.e by all frontend connections and running tasks
 // handlers. It consists of structs containing synchronized methods, to allow access from different goroutines.
 type BackendState struct {
+	sync      *BackendSync
+	files     *FilePathProvider
 	messages  *BackendMessages
 	scheduler Scheduler
 	displays  Displays
-	files     *FilePathProvider
 
 	handshakeValue uint64
-
-	context     context.Context
-	killContext context.CancelFunc
-	waitGroup   sync.WaitGroup
 
 	_ common.NoCopy
 }
 
 func CreateBackendState(frequentTrim bool) (*BackendState, error) {
-	files, err := CreateFilePathProvider()
+	sync, err := CreateBackendSync()
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := CreateFilePathProvider(buildopts.DefaultPort)
 	if err != nil {
 		return nil, err
 	}
@@ -38,38 +36,14 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 		return nil, err
 	}
 
-	context, cancelContext := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-
 	backendState := BackendState{
-		files:       files,
-		messages:    messages,
-		context:     context,
-		killContext: cancelContext,
+		sync:     sync,
+		files:    files,
+		messages: messages,
 	}
 	backendState.StartTrimGoroutine(frequentTrim)
 
 	return &backendState, nil
-}
-
-func (state *BackendState) IsContextKilled() bool {
-	return state.context.Err() != nil
-}
-
-func (state *BackendState) StartGoroutine(body func()) {
-	state.waitGroup.Add(1)
-	go func() {
-		body()
-		state.waitGroup.Done()
-	}()
-}
-
-func (state *BackendState) StartGoroutineAfterContextKill(body func()) {
-	state.waitGroup.Add(1)
-	go func() {
-		<-state.context.Done()
-		body()
-		state.waitGroup.Done()
-	}()
 }
 
 func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
@@ -85,7 +59,7 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 	body := func() {
 		for {
 			select {
-			case <-state.context.Done():
+			case <-state.sync.context.Done():
 				return
 			case <-time.After(trimInterval):
 				state.messages.Trim(maxMessageAge)
@@ -98,5 +72,5 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 			}
 		}
 	}
-	state.StartGoroutine(body)
+	state.sync.StartGoroutine(body)
 }

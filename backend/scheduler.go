@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
 	"sync"
@@ -205,13 +206,13 @@ func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleRe
 	return types.ScheduleResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *BackendState, goroutines interfaces.GoroutineRunner) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
 	case types.DisplaySelectionTypeXorg:
-		_, err := GetXorgDisplay(newTask.Display.Name, backendState)
+		_, err := GetXorgDisplay(newTask.Display.Name, backendState, goroutines)
 		if err != nil {
 			return types.ScheduleResponseStatusInvalidDisplay
 		}
@@ -225,7 +226,11 @@ func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *Backend
 	return types.ScheduleResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) TryScheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+func (scheduler *Scheduler) TryScheduleTask(
+	newTask *Task,
+	backendState *BackendState,
+	goroutines interfaces.GoroutineRunner,
+) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
@@ -238,19 +243,23 @@ func (scheduler *Scheduler) TryScheduleTask(newTask *Task, backendState *Backend
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
-	backendState.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState)
+	goroutines.StartGoroutine(func() {
+		ExecuteTask(newTask, backendState, goroutines)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) TryRescheduleTask(newTask *Task, backendState *BackendState) types.ScheduleResponseStatus {
+func (scheduler *Scheduler) TryRescheduleTask(
+	newTask *Task,
+	backendState *BackendState,
+	goroutines interfaces.GoroutineRunner,
+) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
@@ -262,14 +271,14 @@ func (scheduler *Scheduler) TryRescheduleTask(newTask *Task, backendState *Backe
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
-	backendState.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState)
+	goroutines.StartGoroutine(func() {
+		ExecuteTask(newTask, backendState, goroutines)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -287,9 +296,12 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectio
 	}
 }
 
-func ExecuteTask(task *Task, backendState *BackendState) {
+func ExecuteTask(task *Task,
+	backendState *BackendState,
+	goroutines interfaces.GoroutineRunner,
+) {
 	// Initialize per-task logger
-	perTaskLogger := CreateFileLogger(backendState, task.Computed.Id, task.CaptureStdout)
+	perTaskLogger := CreateFileLogger(backendState, goroutines, task.Computed.Id, task.CaptureStdout)
 	err := perTaskLogger.run()
 	if err != nil {
 		backendState.messages.Add(BackendMessageError, task, "failed to create per-task logger")
@@ -360,7 +372,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 	// Execute the main loop until the task becomes deactivated.
 	for !shadowDynamicState.IsDeactivated {
 		// Initialize the command struct
-		cmdContext, cmdCancel := context.WithCancel(backendState.context)
+		cmdContext, cmdCancel := context.WithCancel(*goroutines.GetContext())
 		defer cmdCancel()
 		cmd := exec.CommandContext(cmdContext, task.Cmdline[0], task.Cmdline[1:]...)
 		cmd.Dir = task.Cwd
@@ -387,11 +399,11 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		// Run pipe reading goroutines
 		var pipeWaitGroup sync.WaitGroup
 		pipeWaitGroup.Add(2)
-		backendState.StartGoroutine(func() {
+		goroutines.StartGoroutine(func() {
 			perTaskLogger.streamOutput(stdoutPipe)
 			pipeWaitGroup.Done()
 		})
-		backendState.StartGoroutine(func() {
+		goroutines.StartGoroutine(func() {
 			perTaskLogger.streamOutput(stderrPipe)
 			pipeWaitGroup.Done()
 		})
@@ -399,7 +411,7 @@ func ExecuteTask(task *Task, backendState *BackendState) {
 		// Wait for the command in a separate goroutine and signal when it ends. It's important to first wait for the
 		// goroutines streaming the output. Otherwise, cmd.Wait() will close the pipes leading to a race condition.
 		commandResultChannel := make(chan int, 1)
-		backendState.StartGoroutine(func() {
+		goroutines.StartGoroutine(func() {
 			pipeWaitGroup.Wait()
 
 			status := 0

@@ -9,7 +9,6 @@ import (
 	"spieven/common"
 )
 
-// TODO add port number to file path, so multiple spievens can coexist (i.e. release + dev)
 // TODO cleanup files after closing spieven
 
 type FilePathProvider struct {
@@ -22,13 +21,13 @@ type FilePathProvider struct {
 	_ common.NoCopy
 }
 
-func CreateFilePathProvider() (*FilePathProvider, error) {
+func CreateFilePathProvider(port string) (*FilePathProvider, error) {
 	homeDir, found := os.LookupEnv("HOME")
 	if !found {
 		return nil, errors.New("failed to read HOME env var")
 	}
 
-	cacheDir := path.Join(homeDir, ".cache", "Spieven")
+	cacheDir := path.Join(homeDir, ".cache", "Spieven", port)
 	err := EnsureDirExistsAndIsEmpty(cacheDir)
 	if err != nil {
 		return nil, err

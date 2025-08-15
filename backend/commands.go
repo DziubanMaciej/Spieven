@@ -172,7 +172,7 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	}
 
 	scheduler.lock.Lock()
-	responseStatus := scheduler.TryScheduleTask(&task, backendState)
+	responseStatus := scheduler.TryScheduleTask(&task, backendState, backendState.sync)
 	scheduler.lock.Unlock()
 
 	response := packet.ScheduleResponseBody{
@@ -279,7 +279,7 @@ func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, requ
 
 	task, status := scheduler.ExtractDeactivatedTask(request.TaskId, backendState)
 	if status == types.ScheduleResponseStatusSuccess {
-		response.Status = scheduler.TryRescheduleTask(task, backendState)
+		response.Status = scheduler.TryRescheduleTask(task, backendState, backendState.sync)
 		response.LogFile = task.Computed.OutFilePath
 		response.Id = task.Computed.Id
 	} else {

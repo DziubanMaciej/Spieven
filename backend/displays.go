@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
 	"syscall"
@@ -18,7 +19,7 @@ type Displays struct {
 	_ common.NoCopy
 }
 
-func GetXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, error) {
+func GetXorgDisplay(name string, backendState *BackendState, goroutines interfaces.GoroutineRunner) (*XorgDisplay, error) {
 	displays := &backendState.displays
 
 	displays.lock.Lock()
@@ -30,7 +31,7 @@ func GetXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 		}
 	}
 
-	newDisplay, err := NewXorgDisplay(name, backendState)
+	newDisplay, err := NewXorgDisplay(name, backendState, goroutines)
 	if err == nil {
 		displays.xorgDisplays = append(displays.xorgDisplays, newDisplay)
 	}
@@ -60,7 +61,7 @@ type XorgDisplay struct {
 	_ common.NoCopy
 }
 
-func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, error) {
+func NewXorgDisplay(name string, backendState *BackendState, goroutines interfaces.GoroutineRunner) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := common.TryConnectXorg(name)
 	if dpy == nil {
@@ -70,7 +71,7 @@ func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 
 	// Run watchxorg. If this command ends, it will mean XServer has stopped working.
 	spievenBinary := os.Args[0]
-	cmd := exec.CommandContext(backendState.context, spievenBinary, "internal", "watchxorg", name)
+	cmd := exec.CommandContext(*goroutines.GetContext(), spievenBinary, "internal", "watchxorg", name)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true, // sets the child to a new process group, to avoid forwarding ctrl+C to it
 	}
@@ -83,9 +84,9 @@ func NewXorgDisplay(name string, backendState *BackendState) (*XorgDisplay, erro
 		Name: name,
 	}
 
-	backendState.StartGoroutine(func() {
+	goroutines.StartGoroutine(func() {
 		cmd.Wait()
-		if backendState.IsContextKilled() {
+		if goroutines.IsContextKilled() {
 			return
 		}
 
