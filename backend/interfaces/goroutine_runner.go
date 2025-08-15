@@ -2,7 +2,7 @@ package interfaces
 
 import "context"
 
-type GoroutineRunner interface {
+type IGoroutines interface {
 	GetContext() *context.Context
 	IsContextKilled() bool
 	StartGoroutine(body func())

@@ -3,25 +3,19 @@ package backend
 import (
 	"fmt"
 	"os"
+	i "spieven/backend/interfaces"
 	"spieven/common"
 	"sync"
 	"time"
-)
-
-type BackendMessageSeverity int
-
-const (
-	BackendMessageInfo BackendMessageSeverity = iota
-	BackendMessageError
 )
 
 // BackendMessage is a description of a failure encountered by the backend that is to be stored for later retrieval by
 // an appropriate frontend command.
 type BackendMessage struct {
 	date     time.Time
-	severity BackendMessageSeverity
+	severity i.MessageSeverity
 	content  string
-	task     *Task
+	task     i.ITask
 }
 
 func (msg *BackendMessage) String() string {
@@ -30,9 +24,9 @@ func (msg *BackendMessage) String() string {
 	var severity string
 
 	switch msg.severity {
-	case BackendMessageInfo:
+	case i.BackendMessageInfo:
 		severity = " INFO"
-	case BackendMessageError:
+	case i.BackendMessageError:
 		severity = "ERROR"
 	default:
 		severity = "     " // Should not happen, but let's handle it gracefully
@@ -41,7 +35,7 @@ func (msg *BackendMessage) String() string {
 	date := msg.date.Format("2006-01-02 15-04-05")
 	taskLabel := ""
 	if msg.task != nil {
-		taskLabel = fmt.Sprintf(" (%s)", msg.task.Computed.LogLabel)
+		taskLabel = fmt.Sprintf(" (%s)", msg.task.GetLogLabel())
 	}
 	result = fmt.Sprintf("[%v][%v] %v%v", severity, date, result, taskLabel)
 
@@ -85,7 +79,7 @@ func (messages *BackendMessages) String() string {
 	return result
 }
 
-func (messages *BackendMessages) Add(severity BackendMessageSeverity, task *Task, content string) {
+func (messages *BackendMessages) Add(severity i.MessageSeverity, task i.ITask, content string) {
 	msg := BackendMessage{
 		date:     time.Now(),
 		severity: severity,
@@ -110,7 +104,7 @@ func (messages *BackendMessages) Add(severity BackendMessageSeverity, task *Task
 	messages.lock.Unlock()
 }
 
-func (messages *BackendMessages) AddF(severity BackendMessageSeverity, task *Task, format string, args ...any) {
+func (messages *BackendMessages) AddF(severity i.MessageSeverity, task i.ITask, format string, args ...any) {
 	content := fmt.Sprintf(format, args...)
 	messages.Add(severity, task, content)
 }

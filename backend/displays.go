@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"spieven/backend/interfaces"
+	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
-	"syscall"
-
 	"sync"
+	"syscall"
 )
 
 type Displays struct {
@@ -19,7 +18,7 @@ type Displays struct {
 	_ common.NoCopy
 }
 
-func GetXorgDisplay(name string, backendState *BackendState, goroutines interfaces.GoroutineRunner) (*XorgDisplay, error) {
+func GetXorgDisplay(name string, backendState *BackendState, goroutines i.IGoroutines) (*XorgDisplay, error) {
 	displays := &backendState.displays
 
 	displays.lock.Lock()
@@ -61,7 +60,7 @@ type XorgDisplay struct {
 	_ common.NoCopy
 }
 
-func NewXorgDisplay(name string, backendState *BackendState, goroutines interfaces.GoroutineRunner) (*XorgDisplay, error) {
+func NewXorgDisplay(name string, backendState *BackendState, goroutines i.IGoroutines) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := common.TryConnectXorg(name)
 	if dpy == nil {

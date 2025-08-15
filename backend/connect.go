@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"net"
+	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/buildopts"
 	"spieven/common/packet"
@@ -40,7 +41,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	if buildopts.HandshakeValidationEnabled {
 		err := ValidateHandshake(connection, backendState)
 		if err != nil {
-			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid handshake")
+			backendState.messages.AddF(i.BackendMessageInfo, nil, "Rejecting frontend request due to invalid handshake")
 			return
 		}
 	}
@@ -108,7 +109,7 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 				return
 			}
 		default:
-			backendState.messages.AddF(BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
+			backendState.messages.AddF(i.BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return
 		}
 
@@ -161,7 +162,7 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
 		if !allowRemoteConnections {
 			ip := connection.RemoteAddr().(*net.TCPAddr).IP
 			if !ip.IsLoopback() {
-				backendState.messages.Add(BackendMessageError, nil, "Rejecting remote connection")
+				backendState.messages.Add(i.BackendMessageError, nil, "Rejecting remote connection")
 				connection.Close()
 				continue
 			}

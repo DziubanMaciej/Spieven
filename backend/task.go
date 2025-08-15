@@ -190,3 +190,7 @@ func (task *Task) ReadLastStdout() (stdout string, err error) {
 
 	return
 }
+
+func (task *Task) GetLogLabel() string {
+	return task.Computed.LogLabel
+}

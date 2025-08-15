@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"spieven/backend/interfaces"
+	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
 	"sync"
@@ -22,7 +22,7 @@ type Scheduler struct {
 	_ common.NoCopy
 }
 
-func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePathProvider) {
+func (scheduler *Scheduler) Trim(messages i.IMessages, files *FilePathProvider) {
 	scheduler.lock.AssertLocked()
 
 	var tasksToKeep []*Task
@@ -42,7 +42,7 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 		filePath := files.GetDeactivatedTasksFile()
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			backendMessages.AddF(BackendMessageError, nil, "Failed to open %s. Cannot push deactivated tasks out of memory to a file.", filePath)
+			messages.AddF(i.BackendMessageError, nil, "Failed to open %s. Cannot push deactivated tasks out of memory to a file.", filePath)
 			tasksToKeep = scheduler.tasks // Keep all tasks, so we don't lose data
 		} else {
 			for _, currTask := range tasksToDeactivate {
@@ -57,9 +57,9 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 				}
 
 				if err == nil {
-					backendMessages.Add(BackendMessageInfo, currTask, "Trimmed task")
+					messages.Add(i.BackendMessageInfo, currTask, "Trimmed task")
 				} else {
-					backendMessages.AddF(BackendMessageError, currTask, "Failed to trim task: %s", err)
+					messages.AddF(i.BackendMessageError, currTask, "Failed to trim task: %s", err)
 					tasksToKeep = append(tasksToKeep, currTask)
 				}
 			}
@@ -72,7 +72,7 @@ func (scheduler *Scheduler) Trim(backendMessages *BackendMessages, files *FilePa
 	scheduler.tasks = tasksToKeep
 }
 
-func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, files *FilePathProvider) []*Task {
+func (scheduler *Scheduler) ReadTrimmedTasks(messages i.IMessages, files *FilePathProvider) []*Task {
 	scheduler.lock.AssertLocked()
 
 	var result []*Task
@@ -80,7 +80,7 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 	filePath := files.GetDeactivatedTasksFile()
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
 	if err != nil {
-		backendMessages.AddF(BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
+		messages.AddF(i.BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
 		return result
 	}
 
@@ -89,7 +89,7 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 		var task Task
 		err := json.Unmarshal(scanner.Bytes(), &task)
 		if err != nil {
-			backendMessages.AddF(BackendMessageError, nil, "Failed decoding a task from %s: %s", filePath, err.Error())
+			messages.AddF(i.BackendMessageError, nil, "Failed decoding a task from %s: %s", filePath, err.Error())
 			continue
 		}
 
@@ -99,10 +99,12 @@ func (scheduler *Scheduler) ReadTrimmedTasks(backendMessages *BackendMessages, f
 	return result
 }
 
-func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *BackendState) (*Task, types.ScheduleResponseStatus) {
+func (scheduler *Scheduler) ExtractDeactivatedTask(
+	taskId int,
+	backendState *BackendState,
+	messages i.IMessages,
+) (*Task, types.ScheduleResponseStatus) {
 	scheduler.lock.AssertLocked()
-
-	backendMessages := backendState.messages
 
 	var extractedTask *Task
 
@@ -138,7 +140,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 		inputFilePath := backendState.files.GetDeactivatedTasksFile()
 		inputFile, err := os.OpenFile(inputFilePath, os.O_RDONLY, 0644)
 		if err != nil {
-			backendMessages.AddF(BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
+			messages.AddF(i.BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
 			return nil, types.ScheduleResponseStatusTaskNotFound
 		}
 		defer inputFile.Close()
@@ -148,7 +150,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 		defer os.Remove(outputFilePath)
 		defer outputFile.Close()
 		if err != nil {
-			backendMessages.AddF(BackendMessageError, nil, "Failed opening tmp file: %s", err.Error())
+			messages.AddF(i.BackendMessageError, nil, "Failed opening tmp file: %s", err.Error())
 			return nil, types.ScheduleResponseStatusTaskNotFound
 		}
 
@@ -158,7 +160,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 			var currentTask Task
 			err := json.Unmarshal(line, &currentTask)
 			if err != nil {
-				backendMessages.AddF(BackendMessageError, nil, "Failed decoding a task from %s: %s", inputFilePath, err.Error())
+				messages.AddF(i.BackendMessageError, nil, "Failed decoding a task from %s: %s", inputFilePath, err.Error())
 				continue
 			}
 
@@ -167,7 +169,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 			} else {
 				line = append(line, '\n')
 				if err := common.WriteBytesToWriter(outputFile, line); err != nil {
-					backendMessages.AddF(BackendMessageError, nil, "Failed writing to tmp file")
+					messages.AddF(i.BackendMessageError, nil, "Failed writing to tmp file")
 					return nil, types.ScheduleResponseStatusTaskNotFound
 				}
 			}
@@ -177,7 +179,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(taskId int, backendState *Bac
 			inputFile.Close()
 			outputFile.Close()
 			if err := common.CopyFile(outputFilePath, inputFilePath); err != nil {
-				backendMessages.AddF(BackendMessageError, nil, "Failed copying tmp file to ndjson")
+				messages.AddF(i.BackendMessageError, nil, "Failed copying tmp file to ndjson")
 				return nil, types.ScheduleResponseStatusTaskNotFound
 			}
 
@@ -206,7 +208,12 @@ func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleRe
 	return types.ScheduleResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *BackendState, goroutines interfaces.GoroutineRunner) types.ScheduleResponseStatus {
+func (scheduler *Scheduler) CheckForDisplay(
+	newTask *Task,
+	backendState *BackendState,
+	goroutines i.IGoroutines,
+	messages i.IMessages,
+) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	switch newTask.Display.Type {
@@ -218,9 +225,9 @@ func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *Backend
 		}
 	case types.DisplaySelectionTypeWayland:
 		// TODO implement wayland detection
-		backendState.messages.Add(BackendMessageError, newTask, "Wayland display tracking is not implemented")
+		messages.Add(i.BackendMessageError, newTask, "Wayland display tracking is not implemented")
 	default:
-		backendState.messages.Add(BackendMessageError, newTask, "Invalid display type")
+		messages.Add(i.BackendMessageError, newTask, "Invalid display type")
 	}
 
 	return types.ScheduleResponseStatusSuccess
@@ -229,7 +236,8 @@ func (scheduler *Scheduler) CheckForDisplay(newTask *Task, backendState *Backend
 func (scheduler *Scheduler) TryScheduleTask(
 	newTask *Task,
 	backendState *BackendState,
-	goroutines interfaces.GoroutineRunner,
+	goroutines i.IGoroutines,
+	messages i.IMessages,
 ) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
@@ -243,14 +251,14 @@ func (scheduler *Scheduler) TryScheduleTask(
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, goroutines)
+		ExecuteTask(newTask, backendState, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -258,7 +266,8 @@ func (scheduler *Scheduler) TryScheduleTask(
 func (scheduler *Scheduler) TryRescheduleTask(
 	newTask *Task,
 	backendState *BackendState,
-	goroutines interfaces.GoroutineRunner,
+	goroutines i.IGoroutines,
+	messages i.IMessages,
 ) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
@@ -271,14 +280,14 @@ func (scheduler *Scheduler) TryRescheduleTask(
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, goroutines)
+		ExecuteTask(newTask, backendState, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -298,13 +307,14 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectio
 
 func ExecuteTask(task *Task,
 	backendState *BackendState,
-	goroutines interfaces.GoroutineRunner,
+	goroutines i.IGoroutines,
+	messages i.IMessages,
 ) {
 	// Initialize per-task logger
 	perTaskLogger := CreateFileLogger(backendState, goroutines, task.Computed.Id, task.CaptureStdout)
 	err := perTaskLogger.run()
 	if err != nil {
-		backendState.messages.Add(BackendMessageError, task, "failed to create per-task logger")
+		messages.Add(i.BackendMessageError, task, "failed to create per-task logger")
 		return
 	}
 	defer perTaskLogger.stop()
@@ -345,11 +355,11 @@ func ExecuteTask(task *Task,
 			shadowDynamicState.DeactivatedReason = content
 		}
 		if hasFlag(LogDeactivation | LogBackend) {
-			severity := BackendMessageInfo
+			severity := i.BackendMessageInfo
 			if hasFlag(LogFlagErr) {
-				severity = BackendMessageError
+				severity = i.BackendMessageError
 			}
-			backendState.messages.Add(severity, task, content)
+			messages.Add(severity, task, content)
 		}
 		if hasFlag(LogDeactivation | LogBackend | LogTask) {
 			perTaskLogger.channel <- diagnosticMessage(content, hasFlag(LogFlagTaskSeparator))
