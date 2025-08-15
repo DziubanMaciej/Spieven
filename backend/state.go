@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"spieven/backend/display"
 	"spieven/backend/scheduler"
 	"spieven/common"
 	"spieven/common/buildopts"
@@ -14,7 +15,7 @@ type BackendState struct {
 	files     *FilePathProvider
 	messages  *BackendMessages
 	scheduler scheduler.Scheduler
-	displays  Displays
+	displays  display.Displays
 
 	handshakeValue uint64
 
