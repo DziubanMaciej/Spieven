@@ -38,7 +38,7 @@ func stdoutMessage(message string) LogMessage {
 }
 
 type FileLogger struct {
-	backendState          *BackendState
+	files                 i.IFiles
 	goroutines            i.IGoroutines
 	channel               chan LogMessage
 	errorChannel          chan error
@@ -51,9 +51,9 @@ type FileLogger struct {
 	_ common.NoCopy
 }
 
-func CreateFileLogger(backendState *BackendState, goroutines i.IGoroutines, taskId int, captureStdout bool) FileLogger {
+func CreateFileLogger(files i.IFiles, goroutines i.IGoroutines, taskId int, captureStdout bool) FileLogger {
 	return FileLogger{
-		backendState:          backendState,
+		files:                 files,
 		goroutines:            goroutines,
 		channel:               make(chan LogMessage),
 		errorChannel:          make(chan error, 1),
@@ -71,7 +71,7 @@ func (log *FileLogger) run() error {
 	defer log.waitGroup.Done()
 
 	// Open task file for writing
-	taskFile, err := os.Create(log.backendState.files.GetTaskLogFile(log.taskId))
+	taskFile, err := os.Create(log.files.GetTaskLogFile(log.taskId))
 	if err != nil {
 		return fmt.Errorf("failed opening task log file")
 	}
@@ -81,7 +81,7 @@ func (log *FileLogger) run() error {
 	taskExecutionId := 0
 	var stdoutFile *os.File
 	if log.captureStdout {
-		stdoutFile, err = os.Create(log.backendState.files.GetStdoutLogFile(log.taskId, taskExecutionId))
+		stdoutFile, err = os.Create(log.files.GetStdoutLogFile(log.taskId, taskExecutionId))
 		if err != nil {
 			return fmt.Errorf("failed opening stdout file")
 		}
@@ -103,7 +103,7 @@ func (log *FileLogger) run() error {
 			if message.isSeparator {
 				// Stdout file - close it and open a new one
 				taskExecutionId++
-				newStdoutFilePath := log.backendState.files.GetStdoutLogFile(log.taskId, taskExecutionId)
+				newStdoutFilePath := log.files.GetStdoutLogFile(log.taskId, taskExecutionId)
 				oldStdoutFilePath := ""
 				oldStdoutFilePath, loggingErr = log.FinalizeStdout(&stdoutFile, &newStdoutFilePath)
 				log.stdoutFilePathChannel <- oldStdoutFilePath

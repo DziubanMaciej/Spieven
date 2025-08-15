@@ -22,6 +22,9 @@ type Scheduler struct {
 	_ common.NoCopy
 }
 
+func (scheduler *Scheduler) Lock()   { scheduler.lock.Lock() }
+func (scheduler *Scheduler) Unlock() { scheduler.lock.Unlock() }
+
 func (scheduler *Scheduler) Trim(messages i.IMessages, files *FilePathProvider) {
 	scheduler.lock.AssertLocked()
 
@@ -210,7 +213,7 @@ func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleRe
 
 func (scheduler *Scheduler) CheckForDisplay(
 	newTask *Task,
-	backendState *BackendState,
+	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) types.ScheduleResponseStatus {
@@ -219,7 +222,7 @@ func (scheduler *Scheduler) CheckForDisplay(
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
 	case types.DisplaySelectionTypeXorg:
-		_, err := GetXorgDisplay(newTask.Display.Name, backendState, goroutines)
+		err := displays.InitXorgDisplay(newTask.Display.Name, scheduler, goroutines)
 		if err != nil {
 			return types.ScheduleResponseStatusInvalidDisplay
 		}
@@ -235,14 +238,15 @@ func (scheduler *Scheduler) CheckForDisplay(
 
 func (scheduler *Scheduler) TryScheduleTask(
 	newTask *Task,
-	backendState *BackendState,
+	files i.IFiles,
+	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
-	newTask.Init(scheduler.currentId, backendState.files.GetTaskLogFile(scheduler.currentId))
+	newTask.Init(scheduler.currentId, files.GetTaskLogFile(scheduler.currentId))
 	scheduler.currentId++
 
 	// Do not schedule, if a similar task is already running
@@ -251,28 +255,29 @@ func (scheduler *Scheduler) TryScheduleTask(
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, &scheduler.lock, goroutines, messages)
+		ExecuteTask(newTask, &scheduler.lock, files, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
 
 func (scheduler *Scheduler) TryRescheduleTask(
 	newTask *Task,
-	backendState *BackendState,
+	files i.IFiles,
+	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) types.ScheduleResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
-	newTask.Init(newTask.Computed.Id, backendState.files.GetTaskLogFile(newTask.Computed.Id))
+	newTask.Init(newTask.Computed.Id, files.GetTaskLogFile(newTask.Computed.Id))
 
 	// Do not schedule, if a similar task is already running
 	if status := scheduler.CheckForTaskConflict(newTask); status != types.ScheduleResponseStatusSuccess {
@@ -280,14 +285,14 @@ func (scheduler *Scheduler) TryRescheduleTask(
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, backendState, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
 		return status
 	}
 
 	// Schedule
 	scheduler.tasks = append(scheduler.tasks, newTask)
 	goroutines.StartGoroutine(func() {
-		ExecuteTask(newTask, backendState, &scheduler.lock, goroutines, messages)
+		ExecuteTask(newTask, &scheduler.lock, files, goroutines, messages)
 	})
 	return types.ScheduleResponseStatusSuccess
 }
@@ -307,13 +312,13 @@ func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectio
 
 func ExecuteTask(
 	task *Task,
-	backendState *BackendState,
 	schedulerLock *common.CheckedLock,
+	files i.IFiles,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) {
 	// Initialize per-task logger
-	perTaskLogger := CreateFileLogger(backendState, goroutines, task.Computed.Id, task.CaptureStdout)
+	perTaskLogger := CreateFileLogger(files, goroutines, task.Computed.Id, task.CaptureStdout)
 	err := perTaskLogger.run()
 	if err != nil {
 		messages.Add(i.BackendMessageError, task, "failed to create per-task logger")

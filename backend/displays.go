@@ -7,35 +7,32 @@ import (
 	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
-	"sync"
 	"syscall"
 )
 
 type Displays struct {
 	xorgDisplays []*XorgDisplay
-	lock         sync.Mutex
+	lock         common.CheckedLock
 
 	_ common.NoCopy
 }
 
-func GetXorgDisplay(name string, backendState *BackendState, goroutines i.IGoroutines) (*XorgDisplay, error) {
-	displays := &backendState.displays
-
+func (displays *Displays) InitXorgDisplay(name string, scheduler i.IScheduler, goroutines i.IGoroutines) error {
 	displays.lock.Lock()
 	defer displays.lock.Unlock()
 
 	for _, currDisplay := range displays.xorgDisplays {
 		if !currDisplay.IsDeactivated && currDisplay.Name == name {
-			return currDisplay, nil
+			return nil
 		}
 	}
 
-	newDisplay, err := NewXorgDisplay(name, backendState, goroutines)
+	newDisplay, err := NewXorgDisplay(name, &displays.lock, scheduler, goroutines)
 	if err == nil {
 		displays.xorgDisplays = append(displays.xorgDisplays, newDisplay)
 	}
 
-	return newDisplay, err
+	return err
 }
 
 func (displays *Displays) Trim() {
@@ -60,7 +57,12 @@ type XorgDisplay struct {
 	_ common.NoCopy
 }
 
-func NewXorgDisplay(name string, backendState *BackendState, goroutines i.IGoroutines) (*XorgDisplay, error) {
+func NewXorgDisplay(
+	name string,
+	displaysLock *common.CheckedLock,
+	scheduler i.IScheduler,
+	goroutines i.IGoroutines,
+) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
 	dpy := common.TryConnectXorg(name)
 	if dpy == nil {
@@ -90,12 +92,12 @@ func NewXorgDisplay(name string, backendState *BackendState, goroutines i.IGorou
 		}
 
 		// Display is closed. Stop all tasks using it.
-		backendState.displays.lock.Lock()
-		backendState.scheduler.lock.Lock()
+		displaysLock.Lock()
+		scheduler.Lock()
 		result.IsDeactivated = true
-		backendState.scheduler.StopTasksByDisplay(types.DisplaySelectionTypeXorg, name)
-		backendState.scheduler.lock.Unlock()
-		backendState.displays.lock.Unlock()
+		scheduler.StopTasksByDisplay(types.DisplaySelectionTypeXorg, name)
+		scheduler.Unlock()
+		displaysLock.Unlock()
 
 		// TODO implement a more sophisticated display termination: wait for some time before killing tasks to give them time to finish gracefully. Make it a backend's parameter.
 	})
