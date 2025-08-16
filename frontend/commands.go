@@ -43,7 +43,7 @@ func CmdLog(backendConnection net.Conn) error {
 
 func CmdList(
 	backendConnection net.Conn,
-	filter packet.ListRequestBodyFilter,
+	filter types.TaskFilter,
 	includeDeactivated bool,
 	includeDeactivatedAlways bool,
 	jsonOutput bool,
@@ -84,6 +84,7 @@ func CmdList(
 		fmt.Println(string(output))
 	} else {
 		if len(response) == 0 {
+			filter.Derive()
 			if filter.HasAnyFilter {
 				fmt.Println("no tasks match the requested criteria")
 			} else {
@@ -204,7 +205,7 @@ func CmdSchedule(
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
-		filter := packet.ListRequestBodyFilter{IdFilter: taskId}
+		filter := types.TaskFilter{IdFilter: taskId}
 		request := packet.ListRequestBody{
 			Filter:             filter,
 			IncludeDeactivated: true,
@@ -325,9 +326,9 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	return nil
 }
 
-func CmdRefresh(backendConnection net.Conn, taskId int) error {
-	request := packet.RefreshBody{
-		TaskId: taskId,
+func CmdRefresh(backendConnection net.Conn, filter types.TaskFilter) error {
+	request := packet.RefreshRequestBody{
+		Filter: filter,
 	}
 
 	requestPacket, err := packet.EncodeRefreshPacket(request)
@@ -350,26 +351,8 @@ func CmdRefresh(backendConnection net.Conn, taskId int) error {
 		return err
 	}
 
-	if taskId == -1 {
-		// We asked to refresh all tasks
-		if response.ActiveTasksCount != response.RefreshedTasksCount {
-			return errors.New("not all tasks were refreshed")
-		} else {
-			fmt.Println("all tasks refreshed")
-			return nil
-		}
-	} else {
-		// We asked to refresh a specific task
-		switch response.RefreshedTasksCount {
-		case 0:
-			return errors.New("invalid task id")
-		case 1:
-			fmt.Println("task refreshed")
-			return nil
-		default:
-			return errors.New("multiple tasks refreshed, this is unexpected")
-		}
-	}
+	fmt.Printf("%v out of %v tasks were refreshed\n", response.RefreshedTasksCount, response.ActiveTasksCount)
+	return nil
 }
 
 func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleResponseBody, error) {

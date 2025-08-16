@@ -9,6 +9,35 @@ import (
 	"spieven/common/types"
 )
 
+func getSelectorFunc(filter *types.TaskFilter) func(*scheduler.Task) bool {
+	filter.Derive()
+
+	// By default we want to return all of them, but then we compose additional checks depending on
+	// the frontend request.
+	selector := func(task *scheduler.Task) bool { return true }
+	if filter.HasIdFilter {
+		prev := selector
+		selector = func(task *scheduler.Task) bool { return prev(task) && task.Computed.Id == filter.IdFilter }
+	}
+	if filter.HasAnyNameFilter {
+		prev := selector
+		selector = func(task *scheduler.Task) bool {
+			return prev(task) && common.Contains(filter.AnyNameFilter, task.FriendlyName)
+		}
+	}
+	if filter.HasDisplayFilter {
+		prev := selector
+		selector = func(task *scheduler.Task) bool { return prev(task) && task.Display == filter.DisplayFilter }
+	}
+	if filter.HasAllTagsFilter {
+		prev := selector
+		selector = func(task *scheduler.Task) bool {
+			return prev(task) && common.ContainsAll(filter.AllTagsFilter, task.Tags)
+		}
+	}
+	return selector
+}
+
 func CmdLog(backendState *BackendState, frontendConnection net.Conn) error {
 	messages := backendState.messages
 
@@ -69,30 +98,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	sched.Lock()
 
 	// Prepare a selector function, that returns true when a task should be sent back to the frontend.
-	// By default we want to return all of them, but then we compose additional checks depending on
-	// the frontend request.
-	selector := func(task *scheduler.Task) bool { return true }
-	request.Filter.Derive()
-	if request.Filter.HasIdFilter {
-		prev := selector
-		selector = func(task *scheduler.Task) bool { return prev(task) && task.Computed.Id == request.Filter.IdFilter }
-	}
-	if request.Filter.HasAnyNameFilter {
-		prev := selector
-		selector = func(task *scheduler.Task) bool {
-			return prev(task) && common.Contains(request.Filter.AnyNameFilter, task.FriendlyName)
-		}
-	}
-	if request.Filter.HasDisplayFilter {
-		prev := selector
-		selector = func(task *scheduler.Task) bool { return prev(task) && task.Display == request.Filter.DisplayFilter }
-	}
-	if request.Filter.HasAllTagsFilter {
-		prev := selector
-		selector = func(task *scheduler.Task) bool {
-			return prev(task) && common.ContainsAll(request.Filter.AllTagsFilter, task.Tags)
-		}
-	}
+	selector := getSelectorFunc(&request.Filter)
 
 	// Prepare helper functions to list tasks from memory or from disc. The in-memory list can contain both active tasks
 	// and already deactivated tasks that were not yet paged to a file.
@@ -234,33 +240,24 @@ func CmdQueryTaskActive(backendState *BackendState, frontendConnection net.Conn,
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
 
-func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request packet.RefreshBody) error {
+func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request packet.RefreshRequestBody) error {
 	sched := &backendState.scheduler
 
 	var response packet.RefreshResponseBody
 
-	refresh := func(task *scheduler.Task) {
-		select {
-		case task.Channels.RefreshChannel <- struct{}{}:
-		default:
-		}
-		response.RefreshedTasksCount++
-	}
-
 	sched.Lock()
 
-	if request.TaskId == -1 {
-		for _, task := range sched.GetTasks() {
-			refresh(task)
-		}
-	} else {
-		for _, task := range sched.GetTasks() {
-			if task.Computed.Id == request.TaskId {
-				refresh(task)
+	selector := getSelectorFunc(&request.Filter)
+
+	for _, task := range sched.GetTasks() {
+		if selector(task) {
+			select {
+			case task.Channels.RefreshChannel <- struct{}{}:
+			default:
 			}
+			response.RefreshedTasksCount++
 		}
 	}
-
 	response.ActiveTasksCount = len(sched.GetTasks())
 
 	sched.Unlock()

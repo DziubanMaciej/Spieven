@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"spieven/common/packet"
 	"spieven/common/types"
 	"strconv"
 
@@ -45,7 +44,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Display a list of running tasks",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				filter := packet.ListRequestBodyFilter{
+				filter := types.TaskFilter{
 					IdFilter:      idFilter,
 					AnyNameFilter: anyNameFilter,
 					AllTagsFilter: tags,
@@ -53,7 +52,6 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
 					return err
 				}
-				filter.Derive()
 
 				connection, err := ConnectToBackend()
 				if err == nil {
@@ -182,18 +180,20 @@ func CreateCliCommands() (commands []*cobra.Command) {
 	}
 
 	{
+		var (
+			idFilter      int
+			anyNameFilter []string
+			allTagsFilter []string
+		)
 		cmd := &cobra.Command{
-			Use:   "refresh [TASK_ID]",
+			Use:   "refresh",
 			Short: "Cancels a wait between task's command execution. If TASK_ID is not specified, all tasks are refreshed.",
-			Args:  cobra.MaximumNArgs(1),
+			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				taskId := -1
-				if len(args) > 0 {
-					var err error
-					taskId, err = strconv.Atoi(args[0])
-					if err != nil {
-						return err
-					}
+				filter := types.TaskFilter{
+					IdFilter:      idFilter,
+					AnyNameFilter: anyNameFilter,
+					AllTagsFilter: allTagsFilter,
 				}
 
 				connection, err := ConnectToBackend()
@@ -201,9 +201,12 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return errors.New("cannot connect to backend")
 				}
 				defer connection.Close()
-				return CmdRefresh(connection, taskId)
+				return CmdRefresh(connection, filter)
 			},
 		}
+		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
+		cmd.Flags().StringSliceVarP(&anyNameFilter, "names", "n", []string{}, "Filter tasks by friendly names. Multiple names can be specified (comma separated) to allow multiple results")
+		cmd.Flags().StringSliceVarP(&allTagsFilter, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
 		commands = append(commands, cmd)
 	}
 

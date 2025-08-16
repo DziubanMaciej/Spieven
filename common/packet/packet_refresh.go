@@ -1,14 +1,16 @@
 package packet
 
-type RefreshBody struct {
-	TaskId int
+import "spieven/common/types"
+
+type RefreshRequestBody struct {
+	Filter types.TaskFilter
 }
 
-func EncodeRefreshPacket(body RefreshBody) (Packet, error) {
+func EncodeRefreshPacket(body RefreshRequestBody) (Packet, error) {
 	return EncodePacket(PacketIdRefresh, body)
 }
 
-func DecodeRefreshPacket(packet Packet) (body RefreshBody, err error) {
+func DecodeRefreshPacket(packet Packet) (body RefreshRequestBody, err error) {
 	err = DecodePacket(packet, PacketIdRefresh, &body)
 	return
 }

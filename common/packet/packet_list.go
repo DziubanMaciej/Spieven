@@ -1,34 +1,9 @@
 package packet
 
-import (
-	"math"
-	"spieven/common/types"
-)
-
-// TODO use these filters for refreshing as well
-type ListRequestBodyFilter struct {
-	IdFilter      int
-	AnyNameFilter []string
-	DisplayFilter types.DisplaySelection
-	AllTagsFilter []string
-
-	HasIdFilter      bool `json:"-"`
-	HasAnyNameFilter bool `json:"-"`
-	HasDisplayFilter bool `json:"-"`
-	HasAllTagsFilter bool `json:"-"`
-	HasAnyFilter     bool `json:"-"`
-}
-
-func (filter *ListRequestBodyFilter) Derive() {
-	filter.HasIdFilter = filter.IdFilter != math.MaxInt
-	filter.HasAnyNameFilter = len(filter.AnyNameFilter) > 0
-	filter.HasDisplayFilter = filter.DisplayFilter.Type != types.DisplaySelectionTypeNone
-	filter.HasAllTagsFilter = len(filter.AllTagsFilter) > 0
-	filter.HasAnyFilter = filter.HasIdFilter || filter.HasAnyNameFilter || filter.HasDisplayFilter || filter.HasAllTagsFilter
-}
+import "spieven/common/types"
 
 type ListRequestBody struct {
-	Filter                   ListRequestBodyFilter
+	Filter                   types.TaskFilter
 	IncludeDeactivated       bool
 	IncludeDeactivatedAlways bool
 	UniqueNames              bool
