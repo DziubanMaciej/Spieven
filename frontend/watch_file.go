@@ -11,7 +11,6 @@ import (
 )
 
 func WatchFile(taskId int, filePath string, stopFlag *atomic.Int32) error {
-
 	file, err := common.OpenFileWithTimeout(filePath, os.O_RDONLY, 0644, 2*time.Second)
 	if err != nil {
 		return fmt.Errorf("could not open log file. Try running Spieven peek %v", taskId)

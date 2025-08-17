@@ -15,31 +15,59 @@ func CreateCliCommands() *cobra.Command {
 		Hidden:        true,
 	}
 
-	watchxorgCmd := &cobra.Command{
-		Use:  "watchxorg DISPLAY",
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := common.LoadXorgLibs()
-			if err != nil {
-				return err
-			}
-			defer common.UnloadXorgLibs()
+	{
+		watchxorgCmd := &cobra.Command{
+			Use:  "watchxorg DISPLAY",
+			Args: cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				err := common.LoadXorgLibs()
+				if err != nil {
+					return err
+				}
+				defer common.UnloadXorgLibs()
 
-			dpyName := args[0]
-			dpy, err := common.TryConnectXorg(dpyName)
-			if err != nil {
-				return err
-			}
-			defer common.DisconnectXorg(dpy)
+				dpyName := args[0]
+				dpy, err := common.TryConnectXorg(dpyName)
+				if err != nil {
+					return err
+				}
+				defer common.DisconnectXorg(dpy)
 
-			fmt.Printf("Connected to xorg %v\n", dpyName)
-			common.WatchXorgActive(dpy)
-			fmt.Printf("Disconnected from xorg %v\n", dpyName)
-			return nil
-		},
+				fmt.Printf("Connected to xorg %v\n", dpyName)
+				common.WatchXorgActive(dpy)
+				fmt.Printf("Disconnected from xorg %v\n", dpyName)
+				return nil
+			},
+		}
+		rootCmd.AddCommand(watchxorgCmd)
 	}
 
-	rootCmd.AddCommand(watchxorgCmd)
+	{
+		watchxorgCmd := &cobra.Command{
+			Use:  "watchwayland DISPLAY",
+			Args: cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				err := common.LoadWaylandLibs()
+				if err != nil {
+					return err
+				}
+				defer common.UnloadWaylandLibs()
+
+				dpyName := args[0]
+				dpy, err := common.TryConnectWayland(dpyName)
+				if err != nil {
+					return err
+				}
+				defer common.DisconnecWayland(dpy)
+
+				fmt.Printf("Connected to wayland display %v\n", dpyName)
+				common.WatchWaylandActive(dpy)
+				fmt.Printf("Disconnected from wayland display %v\n", dpyName)
+				return nil
+			},
+		}
+		rootCmd.AddCommand(watchxorgCmd)
+	}
 
 	return rootCmd
 }

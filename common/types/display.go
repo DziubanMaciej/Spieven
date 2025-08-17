@@ -14,6 +14,21 @@ const (
 	DisplaySelectionTypeWayland
 )
 
+func (t DisplaySelectionType) String() string {
+	switch t {
+	case DisplaySelectionTypeNone:
+		return "none"
+	case DisplaySelectionTypeHeadless:
+		return "headless"
+	case DisplaySelectionTypeXorg:
+		return "xorg"
+	case DisplaySelectionTypeWayland:
+		return "wayland"
+	default:
+		return "invalid"
+	}
+}
+
 type DisplaySelection struct {
 	Type DisplaySelectionType
 	Name string

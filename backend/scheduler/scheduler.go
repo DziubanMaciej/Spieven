@@ -219,14 +219,11 @@ func (scheduler *Scheduler) CheckForDisplay(
 
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
-	case types.DisplaySelectionTypeXorg:
-		err := displays.InitXorgDisplay(newTask.Display.Name, scheduler, goroutines)
+	case types.DisplaySelectionTypeXorg, types.DisplaySelectionTypeWayland:
+		err := displays.InitDisplay(newTask.Display, scheduler, goroutines)
 		if err != nil {
 			return types.ScheduleResponseStatusInvalidDisplay
 		}
-	case types.DisplaySelectionTypeWayland:
-		// TODO implement wayland detection
-		messages.Add(i.BackendMessageError, newTask, "Wayland display tracking is not implemented")
 	default:
 		messages.Add(i.BackendMessageError, newTask, "Invalid display type")
 	}
@@ -295,15 +292,12 @@ func (scheduler *Scheduler) TryRescheduleTask(
 	return types.ScheduleResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) StopTasksByDisplay(displayType types.DisplaySelectionType, displayName string) {
+func (scheduler *Scheduler) StopTasksByDisplay(display types.DisplaySelection) {
 	scheduler.lock.AssertLocked()
 
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
-
 	for _, currTask := range scheduler.tasks {
-		if currTask.Display.Name == displayName && currTask.Display.Type == displayType {
-			currTask.Channels.StopChannel <- fmt.Sprintf("stopping tasks on display %v", displayName)
+		if currTask.Display == display {
+			currTask.Channels.StopChannel <- fmt.Sprintf("stopping tasks on %v display %v", display.Type.String(), display.Name)
 		}
 	}
 }

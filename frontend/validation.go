@@ -23,9 +23,6 @@ func ValidateString(val string, stringName string, validationType ValidationType
 			}
 		case ValidationTypeAlphanumeric:
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-') {
-				fmt.Println(stringName)
-				fmt.Println(val)
-				fmt.Println(r)
 				return fmt.Errorf("%v contains invalid characters. Only alphanumeric characters, hyphens and underscore are allowed", stringName)
 			}
 		default:
