@@ -19,15 +19,21 @@ func CreateCliCommands() *cobra.Command {
 		Use:  "watchxorg DISPLAY",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dpyName := args[0]
-			dpy := common.TryConnectXorg(dpyName)
-			if dpy == nil {
-				return fmt.Errorf("could not connect to xorg %v", dpyName)
+			err := common.LoadXorgLibs()
+			if err != nil {
+				return err
 			}
+			defer common.UnloadXorgLibs()
+
+			dpyName := args[0]
+			dpy, err := common.TryConnectXorg(dpyName)
+			if err != nil {
+				return err
+			}
+			defer common.DisconnectXorg(dpy)
 
 			fmt.Printf("Connected to xorg %v\n", dpyName)
 			common.WatchXorgActive(dpy)
-			common.DisconnectXorg(dpy)
 			fmt.Printf("Disconnected from xorg %v\n", dpyName)
 			return nil
 		},

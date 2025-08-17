@@ -24,9 +24,9 @@ func NewXorgDisplay(
 	goroutines i.IGoroutines,
 ) (*XorgDisplay, error) {
 	// First try to connect to XServer. If it cannot be done, the passed DISPLAY value is invalid
-	dpy := common.TryConnectXorg(name)
-	if dpy == nil {
-		return nil, fmt.Errorf("cannot connect to xorg")
+	dpy, err := common.TryConnectXorg(name)
+	if err != nil {
+		return nil, err
 	}
 	common.DisconnectXorg(dpy)
 
@@ -36,7 +36,7 @@ func NewXorgDisplay(
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true, // sets the child to a new process group, to avoid forwarding ctrl+C to it
 	}
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return nil, fmt.Errorf("cannot start Spieven watchxorg")
 	}

@@ -14,8 +14,8 @@ type BackendState struct {
 	sync      *BackendSync
 	files     *FilePathProvider
 	messages  *BackendMessages
+	displays  *display.Displays
 	scheduler scheduler.Scheduler
-	displays  display.Displays
 
 	handshakeValue uint64
 
@@ -38,10 +38,13 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 		return nil, err
 	}
 
+	displays := display.CreateDisplays(messages)
+
 	backendState := BackendState{
 		sync:     sync,
 		files:    files,
 		messages: messages,
+		displays: displays,
 	}
 	backendState.StartTrimGoroutine(frequentTrim)
 	backendState.StartCleanupGorotuine()
@@ -80,8 +83,9 @@ func (state *BackendState) StartTrimGoroutine(frequentTrim bool) {
 
 func (state *BackendState) StartCleanupGorotuine() {
 	body := func() {
-		state.files.Cleanup()
+		state.displays.Cleanup()
 		state.messages.Cleanup()
+		state.files.Cleanup()
 	}
 	state.sync.StartGoroutineAfterContextKill(body)
 }
