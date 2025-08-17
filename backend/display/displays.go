@@ -5,9 +5,11 @@ import (
 	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/types"
+	"time"
 )
 
 type Displays struct {
+	killGracePeriod  time.Duration
 	xorgSupported    bool
 	waylandSupported bool
 	displays         []*Display
@@ -16,7 +18,7 @@ type Displays struct {
 	_    common.NoCopy
 }
 
-func CreateDisplays(messages i.IMessages) *Displays {
+func CreateDisplays(messages i.IMessages, killGracePeriod time.Duration) *Displays {
 	xorgSupported := true
 	xorgErr := common.LoadXorgLibs()
 	if xorgErr != nil {
@@ -32,6 +34,7 @@ func CreateDisplays(messages i.IMessages) *Displays {
 	}
 
 	return &Displays{
+		killGracePeriod:  killGracePeriod,
 		xorgSupported:    xorgSupported,
 		waylandSupported: waylandSupported,
 	}
@@ -42,7 +45,7 @@ func (displays *Displays) Cleanup() {
 	common.UnloadWaylandLibs()
 }
 
-func (displays *Displays) InitDisplay(displaySelection types.DisplaySelection, scheduler i.IScheduler, goroutines i.IGoroutines) error {
+func (displays *Displays) InitDisplay(displaySelection types.DisplaySelection, scheduler i.IScheduler, goroutines i.IGoroutines, messages i.IMessages) error {
 	displays.lock.Lock()
 	defer displays.lock.Unlock()
 
@@ -68,7 +71,7 @@ func (displays *Displays) InitDisplay(displaySelection types.DisplaySelection, s
 	}
 
 	// Create a new display and store it
-	newDisplay, err := newDisplay(displaySelection, &displays.lock, scheduler, goroutines)
+	newDisplay, err := newDisplay(displaySelection, &displays.lock, scheduler, goroutines, messages, displays.killGracePeriod)
 	if err != nil {
 		return err
 	}

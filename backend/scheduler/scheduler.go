@@ -220,7 +220,7 @@ func (scheduler *Scheduler) CheckForDisplay(
 	switch newTask.Display.Type {
 	case types.DisplaySelectionTypeHeadless:
 	case types.DisplaySelectionTypeXorg, types.DisplaySelectionTypeWayland:
-		err := displays.InitDisplay(newTask.Display, scheduler, goroutines)
+		err := displays.InitDisplay(newTask.Display, scheduler, goroutines, messages)
 		if err != nil {
 			return types.ScheduleResponseStatusInvalidDisplay
 		}

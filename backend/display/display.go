@@ -9,6 +9,7 @@ import (
 	"spieven/common"
 	"spieven/common/types"
 	"syscall"
+	"time"
 )
 
 type Display struct {
@@ -23,6 +24,8 @@ func newDisplay(
 	displaysLock *common.CheckedLock,
 	scheduler i.IScheduler,
 	goroutines i.IGoroutines,
+	messages i.IMessages,
+	killGracePeriod time.Duration,
 ) (*Display, error) {
 	// First try to connect to the display server. If it cannot be done, the passed display name is invalid.
 	var watcherProcessArg string
@@ -67,15 +70,27 @@ func newDisplay(
 			return
 		}
 
+		// If we are here, it means the display server is dead, but spieven is still running. Kill all tasks running on
+		// this display. Give them some grace period to detect closure of the display and terminate nicely.
+		messages.AddF(i.BackendMessageInfo, nil, "Display %v has been closed. Killing all its tasks in %s", displaySelection.ComputeDisplayLabelLong(), killGracePeriod)
+		timer := time.NewTimer(killGracePeriod)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-(*goroutines.GetContext()).Done():
+		}
+		if goroutines.IsContextKilled() {
+			return
+		}
+
 		// Display is closed. Stop all tasks using it.
+		messages.AddF(i.BackendMessageInfo, nil, "Killing all tasks on display %v", displaySelection.ComputeDisplayLabelLong())
 		displaysLock.Lock()
 		scheduler.Lock()
 		result.isDeactivated = true
 		scheduler.StopTasksByDisplay(displaySelection)
 		scheduler.Unlock()
 		displaysLock.Unlock()
-
-		// TODO implement a more sophisticated display termination: wait for some time before killing tasks to give them time to finish gracefully. Make it a backend's parameter.
 	})
 
 	return &result, nil

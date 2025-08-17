@@ -8,6 +8,7 @@ import (
 	"spieven/common/buildopts"
 	"spieven/common/packet"
 	"spieven/common/types"
+	"time"
 )
 
 func ValidateHandshake(connection net.Conn, backendState *BackendState) error {
@@ -116,10 +117,10 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	}
 }
 
-func RunServer(frequentTrim bool, allowRemoteConnections bool) error {
+func RunServer(frequentTrim bool, allowRemoteConnections bool, displayKillGracePeriod time.Duration) error {
 	common.SetDisplayEnvVarsForCurrentProcess(types.DisplaySelection{Type: types.DisplaySelectionTypeHeadless})
 
-	backendState, err := CreateBackendState(frequentTrim)
+	backendState, err := CreateBackendState(frequentTrim, displayKillGracePeriod)
 	if err != nil {
 		return err
 	}

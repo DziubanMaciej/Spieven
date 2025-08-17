@@ -22,7 +22,7 @@ type BackendState struct {
 	_ common.NoCopy
 }
 
-func CreateBackendState(frequentTrim bool) (*BackendState, error) {
+func CreateBackendState(frequentTrim bool, displayKillGracePeriod time.Duration) (*BackendState, error) {
 	sync, err := CreateBackendSync()
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func CreateBackendState(frequentTrim bool) (*BackendState, error) {
 		return nil, err
 	}
 
-	displays := display.CreateDisplays(messages)
+	displays := display.CreateDisplays(messages, displayKillGracePeriod)
 
 	backendState := BackendState{
 		sync:     sync,
