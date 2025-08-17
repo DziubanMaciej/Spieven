@@ -15,6 +15,8 @@ Tasks can be deactivated for various reasons, meaning *Spieven* will stop runnin
 
 Tasks can be queried with `spieven list`. This command returns various metadata about all active tasks and optionally inactive tasks as well. This command also supports `--json` switch to serialize all data into JSON, making it easily parseable in scripts.
 
+Typically *Spieven* tasks should be scheduled in a script that is run once per display init, for example `.xinitrc` or `~/.config/autostart/*.desktop` files.
+
 
 
 # Examples
@@ -25,7 +27,7 @@ spieven schedule -s 2000 notify-send "Hello world"
 
 Cancel the 2 second wait and display the notification immediately (assuming the task ID was 0):
 ```
-spieven refresh 0
+spieven refresh -i 0
 ```
 
 Schedule a task to try to run `picom` on Xorg display `:2`, but try only 3 times. After 3 failures, deactivate the task:
@@ -36,6 +38,16 @@ spieven schedule -p x:2 -m 3 picom
 List tasks running on Xorg display `:2`, including deactivated tasks:
 ```
 spieven list -p x:2 -D
+```
+
+Inspect logs for the task with ID 3:
+```
+spieven peek 3
+```
+
+Reactivate the task with the same parameters:
+```
+spieven reschedule 3
 ```
 
 Get the help message with all available options:
