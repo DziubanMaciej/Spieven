@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"os"
 )
 
 type DisplaySelectionType byte
@@ -34,13 +35,17 @@ type DisplaySelection struct {
 	Name string
 }
 
-const DisplaySelectionHelpString = "Use \"h\" for headless, \"x$DISPLAY\" for xorg or \"w$WAYLAND_DISPLAY\" for wayland."
+const DisplaySelectionHelpString = "Use \"h\" for headless, \"x\" for xorg or \"w\" for wayland. You can also select a specific display with \"x:0\" or \"wwayland-1\"."
 
-func (display *DisplaySelection) ParseDisplaySelection(val string) error {
-	if val == "" {
-		display.Type = DisplaySelectionTypeNone
-		display.Name = ""
-		return nil
+func (display *DisplaySelection) ParseDisplaySelection(val string, allowNone bool) error {
+	if len(val) == 0 {
+		if allowNone {
+			display.Type = DisplaySelectionTypeNone
+			display.Name = ""
+			return nil
+		} else {
+			return errors.New("invalid display selection - it must not be empty")
+		}
 	}
 
 	switch val[0] {
@@ -56,10 +61,21 @@ func (display *DisplaySelection) ParseDisplaySelection(val string) error {
 		return errors.New("invalid display selection - it must be either headless, xorg or wayland")
 	}
 
-	display.Name = val[1:]
-	if display.Name == "" {
-		return errors.New("invalid display selection - it must contain display name")
+	if len(val) == 1 {
+		// Derive display name from env
+		name, err := readCurrentDisplayNameFromEnv(display.Type)
+		if err != nil {
+			return fmt.Errorf("%v; please specify display name explicitly", err.Error())
+		}
+		display.Name = name
+	} else {
+		// Explicity passed display name
+		if display.Type == DisplaySelectionTypeHeadless {
+			return errors.New("invalid display selection - headless display cannot have a name")
+		}
+		display.Name = val[1:]
 	}
+
 	return nil
 }
 
@@ -87,4 +103,28 @@ func (display *DisplaySelection) ComputeDisplayLabelLong() string {
 	default:
 		return "unknown"
 	}
+}
+
+func readCurrentDisplayNameFromEnv(displayType DisplaySelectionType) (string, error) {
+	var envName string
+
+	switch displayType {
+	case DisplaySelectionTypeXorg:
+		envName = "DISPLAY"
+	case DisplaySelectionTypeWayland:
+		envName = "WAYLAND_DISPLAY"
+	case DisplaySelectionTypeHeadless:
+		return "", nil
+	default:
+		return "", errors.New("invalid display type")
+	}
+
+	displayName, found := os.LookupEnv(envName)
+	if !found {
+		return "", fmt.Errorf("failed to read %v env", envName)
+	}
+	if displayName == "" {
+		return "", fmt.Errorf("%v is empty", envName)
+	}
+	return displayName, nil
 }

@@ -49,7 +49,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					AnyNameFilter: anyNameFilter,
 					AllTagsFilter: tags,
 				}
-				if err := filter.DisplayFilter.ParseDisplaySelection(display); err != nil {
+				if err := filter.DisplayFilter.ParseDisplaySelection(display, true); err != nil {
 					return err
 				}
 
@@ -104,7 +104,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Args:  cobra.MinimumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				var displaySelection types.DisplaySelection
-				if err := displaySelection.ParseDisplaySelection(display); err != nil {
+				if err := displaySelection.ParseDisplaySelection(display, false); err != nil {
 					return err
 				}
 
@@ -135,6 +135,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")
 		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Specify comma-separated list of tags for the task. Task do not have any effect, but they can be used to filter tasks.")
+		cmd.MarkFlagRequired("display")
 
 		commands = append(commands, cmd)
 	}
