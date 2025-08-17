@@ -4,13 +4,21 @@ import (
 	"hash/fnv"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 func CalculateSpievenFileHash() (uint64, error) {
-	path := os.Args[0]
-	return CalculateFileHash(path)
+	exePath, err := os.Executable()
+	if err != nil {
+		return 0, err
+	}
+	resolvedPath, err := filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return 0, err
+	}
+	return CalculateFileHash(resolvedPath)
 }
 
 func CalculateFileHash(path string) (uint64, error) {
