@@ -33,6 +33,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			idFilter                 int
 			anyNameFilter            []string
 			display                  string
+			shortOutput              bool
 			includeDeactivated       bool
 			includeDeactivatedAlways bool
 			jsonOutput               bool
@@ -56,7 +57,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend()
 				if err == nil {
 					defer connection.Close()
-					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, jsonOutput, uniqueNames)
+					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, jsonOutput, shortOutput, uniqueNames)
 				}
 				return err
 			},
@@ -68,6 +69,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")
 		cmd.Flags().BoolVarP(&includeDeactivatedAlways, "include-deactivated-always", "D", false, "Include deactivated tasks as well as active ones")
 		cmd.Flags().BoolVarP(&uniqueNames, "unique-names", "u", false, "If multiple tasks with the same name are found, select the one with most recent id")
+		cmd.Flags().BoolVarP(&shortOutput, "short", "s", false, "Display a short one-line-per-task table")
 		cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Display output as json.")
 		commands = append(commands, cmd)
 	}

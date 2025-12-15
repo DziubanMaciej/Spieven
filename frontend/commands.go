@@ -8,6 +8,7 @@ import (
 	"os"
 	"spieven/common/packet"
 	"spieven/common/types"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,6 +48,7 @@ func CmdList(
 	includeDeactivated bool,
 	includeDeactivatedAlways bool,
 	jsonOutput bool,
+	shortOutput bool,
 	uniqueNames bool,
 ) error {
 	request := packet.ListRequestBody{
@@ -82,17 +84,136 @@ func CmdList(
 			return errors.New("failed generating json report")
 		}
 		fmt.Println(string(output))
-	} else {
-		if len(response) == 0 {
-			filter.Derive()
-			if filter.HasAnyFilter {
-				fmt.Println("no tasks match the requested criteria")
-			} else {
-				fmt.Println("no tasks found")
-			}
-			return nil
+		return nil
+	}
+
+	if len(response) == 0 {
+		filter.Derive()
+		if filter.HasAnyFilter {
+			fmt.Println("no tasks match the requested criteria")
+		} else {
+			fmt.Println("no tasks found")
+		}
+		return nil
+	}
+
+	if shortOutput {
+		// Generic short, one-line-per-task table with dynamic Column widths.
+		type Column struct {
+			header string
+			get    func(task *packet.ListResponseBodyItem) string
 		}
 
+		columns := []Column{
+			{
+				header: "Id",
+				get: func(task *packet.ListResponseBodyItem) string {
+					return fmt.Sprintf("%d", task.Id)
+				},
+			},
+			{
+				header: "Name",
+				get: func(task *packet.ListResponseBodyItem) string {
+					name := task.FriendlyName
+					if name == "" && len(task.Cmdline) > 0 {
+						name = task.Cmdline[0]
+					}
+					return name
+				},
+			},
+			{
+				header: "Active",
+				get: func(task *packet.ListResponseBodyItem) string {
+					if task.IsDeactivated {
+						return "no"
+					}
+					return "yes"
+				},
+			},
+			{
+				header: "Display",
+				get: func(task *packet.ListResponseBodyItem) string {
+					return task.Display.ComputeDisplayLabel()
+				},
+			},
+			{
+				header: "Runs",
+				get: func(task *packet.ListResponseBodyItem) string {
+					return fmt.Sprintf("%d", task.RunCount)
+				},
+			},
+			{
+				header: "Failures",
+				get: func(task *packet.ListResponseBodyItem) string {
+					maxFailures := task.MaxSubsequentFailures
+					maxFailuresStr := "inf"
+					if maxFailures >= 0 {
+						maxFailuresStr = fmt.Sprintf("%d", maxFailures)
+					}
+					return fmt.Sprintf("%d/%s", task.FailureCount, maxFailuresStr)
+				},
+			},
+		}
+
+		colCount := len(columns)
+
+		// Initialize column widths from headers.
+		colWidths := make([]int, colCount)
+		for i, col := range columns {
+			colWidths[i] = len(col.header)
+		}
+
+		// Build rows and update widths based on cell contents.
+		rows := make([][]string, len(response))
+		for i := range response {
+			task := &response[i]
+			row := make([]string, colCount)
+			for ci, col := range columns {
+				val := col.get(task)
+				row[ci] = val
+				if len(val) > colWidths[ci] {
+					colWidths[ci] = len(val)
+				}
+			}
+			rows[i] = row
+		}
+
+		// Build format string with vertical bars based on computed widths.
+		var formatBuilder strings.Builder
+		formatBuilder.WriteString("|")
+		for _, w := range colWidths {
+			fmt.Fprintf(&formatBuilder, " %%-%dv |", w)
+		}
+		formatBuilder.WriteString("\n")
+		format := formatBuilder.String()
+
+		// Build separator line like: |----|--------|...
+		var sepBuilder strings.Builder
+		sepBuilder.WriteString("|")
+		for _, w := range colWidths {
+			sepBuilder.WriteString(strings.Repeat("-", w+2))
+			sepBuilder.WriteString("|")
+		}
+		sep := sepBuilder.String()
+
+		// Print header and separator.
+		headerArgs := make([]any, colCount)
+		for i, col := range columns {
+			headerArgs[i] = col.header
+		}
+		fmt.Printf(format, headerArgs...)
+		fmt.Println(sep)
+
+		// Print rows.
+		for _, row := range rows {
+			rowArgs := make([]any, colCount)
+			for i, val := range row {
+				rowArgs[i] = val
+			}
+			fmt.Printf(format, rowArgs...)
+		}
+	} else {
+		// Default verbose output
 		for i, task := range response {
 			activeStr := "Yes"
 			if task.IsDeactivated {
