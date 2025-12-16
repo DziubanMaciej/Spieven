@@ -18,7 +18,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Display a backend log",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err == nil {
 					defer connection.Close()
 					err = CmdLog(connection)
@@ -58,7 +58,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err == nil {
 					defer connection.Close()
 					err = CmdList(connection, filter, activeOnly, listFormat, uniqueNames)
@@ -86,6 +86,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			rerunDelayAfterFailure int
 			maxSubsequentFailures  int
 			tags                   []string
+			noAutoRun              bool
 		)
 
 		longDescription := "Schedule a new task. By default all option arguments (starting with hyphens) will be interpreted " +
@@ -112,7 +113,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(!noAutoRun)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
@@ -139,6 +140,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")
 		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Specify comma-separated list of tags for the task. Task do not have any effect, but they can be used to filter tasks.")
+		cmd.Flags().BoolVar(&noAutoRun, "no-auto-run", false, "Do not automatically start the backend if it is not running")
 		cmd.MarkFlagRequired("display")
 
 		commands = append(commands, cmd)
@@ -155,7 +157,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return fmt.Errorf("invalid integer: %v", err)
 				}
 
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err == nil {
 					defer connection.Close()
 					err = CmdWatchTaskLog(connection, taskId, nil)
@@ -172,7 +174,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Checks whether the backend is running and can be connected to",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err == nil {
 					defer connection.Close()
 					fmt.Println("backend works correctly")
@@ -201,7 +203,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					AllTagsFilter: allTagsFilter,
 				}
 
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err != nil {
 					return errors.New("cannot connect to backend")
 				}
@@ -227,7 +229,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend()
+				connection, err := ConnectToBackend(false)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdReschedule(connection, taskId)

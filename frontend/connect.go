@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func ConnectToBackend() (net.Conn, error) {
+func ConnectToBackend(allowAutorun bool) (net.Conn, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", common.HostWithPort)
 	if err != nil {
 		return nil, err
@@ -20,7 +20,7 @@ func ConnectToBackend() (net.Conn, error) {
 
 	connection, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err != nil {
-		if buildopts.AutorunBackend {
+		if buildopts.AutorunBackend && allowAutorun {
 			spievenBinary := os.Args[0]
 			cmd := exec.Command(spievenBinary, "serve")
 			cmd.Stdin = nil
@@ -42,7 +42,7 @@ func ConnectToBackend() (net.Conn, error) {
 				return nil, errors.New("cannot connect to Spieven backend even after starting it in background")
 			}
 		} else {
-			return nil, errors.New("cannot connect to Spieven backend (didn't try to start it, as this is a dev build)")
+			return nil, errors.New("cannot connect to Spieven backend (didn't try to start it)")
 		}
 	}
 
