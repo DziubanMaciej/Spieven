@@ -4,7 +4,6 @@ import (
 	"spieven/backend/display"
 	"spieven/backend/scheduler"
 	"spieven/common"
-	"spieven/common/buildopts"
 	"time"
 )
 
@@ -22,13 +21,13 @@ type BackendState struct {
 	_ common.NoCopy
 }
 
-func CreateBackendState(frequentTrim bool, displayKillGracePeriod time.Duration) (*BackendState, error) {
+func CreateBackendState(frequentTrim bool, displayKillGracePeriod time.Duration, port string) (*BackendState, error) {
 	sync, err := CreateBackendSync()
 	if err != nil {
 		return nil, err
 	}
 
-	files, err := CreateFilePathProvider(buildopts.DefaultPort)
+	files, err := CreateFilePathProvider(port)
 	if err != nil {
 		return nil, err
 	}

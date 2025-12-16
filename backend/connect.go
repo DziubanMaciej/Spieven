@@ -118,10 +118,16 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 	}
 }
 
-func RunServer(frequentTrim bool, allowRemoteConnections bool, displayKillGracePeriod time.Duration) error {
+func RunServer(frequentTrim bool, allowRemoteConnections bool, displayKillGracePeriod time.Duration, port int) error {
 	common.SetDisplayEnvVarsForCurrentProcess(types.DisplaySelection{Type: types.DisplaySelectionTypeHeadless})
 
-	backendState, err := CreateBackendState(frequentTrim, displayKillGracePeriod)
+	// Determine port to use
+	portStr := buildopts.DefaultPort
+	if port != 0 {
+		portStr = fmt.Sprintf("%d", port)
+	}
+
+	backendState, err := CreateBackendState(frequentTrim, displayKillGracePeriod, portStr)
 	if err != nil {
 		return err
 	}
@@ -134,7 +140,7 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool, displayKillGraceP
 	backendState.handshakeValue = handshakeValue
 
 	// Create socket
-	listener, err := net.Listen("tcp4", fmt.Sprintf("localhost:%s", buildopts.DefaultPort))
+	listener, err := net.Listen("tcp4", fmt.Sprintf("localhost:%s", portStr))
 	if err != nil {
 		return err
 	}
