@@ -3,10 +3,9 @@ package packet
 import "spieven/common/types"
 
 type ListRequestBody struct {
-	Filter                   types.TaskFilter
-	IncludeDeactivated       bool
-	IncludeDeactivatedAlways bool
-	UniqueNames              bool
+	Filter      types.TaskFilter
+	ActiveOnly  bool
+	UniqueNames bool
 }
 
 func EncodeListPacket(body ListRequestBody) (Packet, error) {

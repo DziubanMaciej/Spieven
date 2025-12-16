@@ -118,20 +118,13 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 		}
 	}
 
-	// Retrieve the tasks while applying the policy from deactivated tasks. When IncludeDeactivatedAlways is set, we
-	// must include deactivated tasks that are either still in memory or where page out to a file. When IncludeDeactivated
-	// is set, we first try to only look at active tasks. If there are no results, then we look at deactivated tasks.
-	if request.IncludeDeactivatedAlways {
+	// Retrieve tasks based on ActiveOnly flag. If we need only active tasks, we only have to look at in memory tasks. Otherwise,
+	// we also include deactivated tasks that are either still in memory or were paged out to a file.
+	if request.ActiveOnly {
+		getTasksFromMemory(false)
+	} else {
 		getTasksFromMemory(true)
 		getTasksFromDeactivatedFile()
-	} else if request.IncludeDeactivated {
-		getTasksFromMemory(false)
-		if len(response) == 0 {
-			getTasksFromMemory(true)
-			getTasksFromDeactivatedFile()
-		}
-	} else {
-		getTasksFromMemory(false)
 	}
 
 	sched.Unlock()

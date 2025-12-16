@@ -46,16 +46,14 @@ func CmdLog(backendConnection net.Conn) error {
 func CmdList(
 	backendConnection net.Conn,
 	filter types.TaskFilter,
-	includeDeactivated bool,
-	includeDeactivatedAlways bool,
+	activeOnly bool,
 	format ftypes.ListFormat,
 	uniqueNames bool,
 ) error {
 	request := packet.ListRequestBody{
-		Filter:                   filter,
-		IncludeDeactivated:       includeDeactivated,
-		IncludeDeactivatedAlways: includeDeactivatedAlways,
-		UniqueNames:              uniqueNames,
+		Filter:      filter,
+		ActiveOnly:  activeOnly,
+		UniqueNames: uniqueNames,
 	}
 
 	requestPacket, err := packet.EncodeListPacket(request)
@@ -346,8 +344,8 @@ func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string
 	retrieveLogFilePath := func() (string, error) {
 		filter := types.TaskFilter{IdFilter: taskId}
 		request := packet.ListRequestBody{
-			Filter:             filter,
-			IncludeDeactivated: true,
+			Filter:     filter,
+			ActiveOnly: false,
 		}
 
 		requestPacket, err := packet.EncodeListPacket(request)

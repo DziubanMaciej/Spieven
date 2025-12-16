@@ -31,14 +31,13 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		var (
-			idFilter                 int
-			anyNameFilter            []string
-			display                  string
-			format                   string
-			includeDeactivated       bool
-			includeDeactivatedAlways bool
-			uniqueNames              bool
-			tags                     []string
+			idFilter      int
+			anyNameFilter []string
+			display       string
+			format        string
+			activeOnly    bool
+			uniqueNames   bool
+			tags          []string
 		)
 		cmd := &cobra.Command{
 			Use:   "list [OPTIONS...]",
@@ -62,7 +61,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend()
 				if err == nil {
 					defer connection.Close()
-					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, listFormat, uniqueNames)
+					err = CmdList(connection, filter, activeOnly, listFormat, uniqueNames)
 				}
 				return err
 			},
@@ -71,8 +70,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().StringSliceVarP(&anyNameFilter, "names", "n", []string{}, "Filter tasks by friendly names. Multiple names can be specified (comma separated) to allow multiple results")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
-		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")
-		cmd.Flags().BoolVarP(&includeDeactivatedAlways, "include-deactivated-always", "D", false, "Include deactivated tasks as well as active ones")
+		cmd.Flags().BoolVarP(&activeOnly, "active-only", "a", false, "Show only active tasks (exclude deactivated)")
 		cmd.Flags().BoolVarP(&uniqueNames, "unique-names", "u", false, "If multiple tasks with the same name are found, select the one with most recent id")
 		cmd.Flags().StringVarP(&format, "format", "f", "default", "Output format: default, detailed or json.")
 		commands = append(commands, cmd)
