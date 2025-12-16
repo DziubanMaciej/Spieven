@@ -29,8 +29,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Display a backend log",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdLog(connection)
@@ -72,8 +71,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdList(connection, filter, activeOnly, listFormat, uniqueNames)
@@ -130,8 +128,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				allowAutorun := !noAutoRun && commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(!noAutoRun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
@@ -177,8 +174,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return fmt.Errorf("invalid integer: %v", err)
 				}
 
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdWatchTaskLog(connection, taskId, nil)
@@ -197,8 +193,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Checks whether the backend is running and can be connected to",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					fmt.Println("backend works correctly")
@@ -229,8 +224,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					AllTagsFilter: allTagsFilter,
 				}
 
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err != nil {
 					return errors.New("cannot connect to backend")
 				}
@@ -260,8 +254,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdReschedule(connection, taskId)
@@ -296,8 +289,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
-				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdStop(connection, taskId)
