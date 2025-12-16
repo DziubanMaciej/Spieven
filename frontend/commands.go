@@ -101,6 +101,7 @@ func CmdList(
 		type Column struct {
 			header string
 			get    func(task *packet.ListResponseBodyItem) string
+			width  int
 		}
 
 		columns := []Column{
@@ -109,6 +110,7 @@ func CmdList(
 				get: func(task *packet.ListResponseBodyItem) string {
 					return fmt.Sprintf("%d", task.Id)
 				},
+				width: 0, // Will be initialized from header length
 			},
 			{
 				header: "Name",
@@ -119,6 +121,7 @@ func CmdList(
 					}
 					return name
 				},
+				width: 0,
 			},
 			{
 				header: "Active",
@@ -128,18 +131,21 @@ func CmdList(
 					}
 					return "yes"
 				},
+				width: 0,
 			},
 			{
 				header: "Display",
 				get: func(task *packet.ListResponseBodyItem) string {
 					return task.Display.ComputeDisplayLabel()
 				},
+				width: 0,
 			},
 			{
 				header: "Runs",
 				get: func(task *packet.ListResponseBodyItem) string {
 					return fmt.Sprintf("%d", task.RunCount)
 				},
+				width: 0,
 			},
 			{
 				header: "Failures",
@@ -151,15 +157,15 @@ func CmdList(
 					}
 					return fmt.Sprintf("%d/%s", task.FailureCount, maxFailuresStr)
 				},
+				width: 0,
 			},
 		}
 
 		colCount := len(columns)
 
 		// Initialize column widths from headers.
-		colWidths := make([]int, colCount)
-		for i, col := range columns {
-			colWidths[i] = len(col.header)
+		for i := range columns {
+			columns[i].width = len(columns[i].header)
 		}
 
 		// Build rows and update widths based on cell contents.
@@ -167,11 +173,11 @@ func CmdList(
 		for i := range response {
 			task := &response[i]
 			row := make([]string, colCount)
-			for ci, col := range columns {
-				val := col.get(task)
+			for ci := range columns {
+				val := columns[ci].get(task)
 				row[ci] = val
-				if len(val) > colWidths[ci] {
-					colWidths[ci] = len(val)
+				if len(val) > columns[ci].width {
+					columns[ci].width = len(val)
 				}
 			}
 			rows[i] = row
@@ -180,8 +186,8 @@ func CmdList(
 		// Build format string with vertical bars based on computed widths.
 		var formatBuilder strings.Builder
 		formatBuilder.WriteString("|")
-		for _, w := range colWidths {
-			fmt.Fprintf(&formatBuilder, " %%-%dv |", w)
+		for _, col := range columns {
+			fmt.Fprintf(&formatBuilder, " %%-%dv |", col.width)
 		}
 		formatBuilder.WriteString("\n")
 		format := formatBuilder.String()
@@ -189,8 +195,8 @@ func CmdList(
 		// Build separator line like: |----|--------|...
 		var sepBuilder strings.Builder
 		sepBuilder.WriteString("|")
-		for _, w := range colWidths {
-			sepBuilder.WriteString(strings.Repeat("-", w+2))
+		for _, col := range columns {
+			sepBuilder.WriteString(strings.Repeat("-", col.width+2))
 			sepBuilder.WriteString("|")
 		}
 		sep := sepBuilder.String()
