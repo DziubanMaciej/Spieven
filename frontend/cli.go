@@ -11,14 +11,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type CommonFlags struct {
+	serverAddress string
+	serverPort    int
+}
+
+func AddCommonFlags(cmd *cobra.Command, flags *CommonFlags) {
+	cmd.Flags().StringVar(&flags.serverAddress, "server-address", "", "Server address to connect to (default: localhost)")
+	cmd.Flags().IntVar(&flags.serverPort, "server-port", 0, "Server port to connect to (default: build-specific, 0 means default)")
+}
+
 func CreateCliCommands() (commands []*cobra.Command) {
 	{
+		var commonFlags CommonFlags
 		cmd := &cobra.Command{
 			Use:   "log",
 			Short: "Display a backend log",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdLog(connection)
@@ -26,6 +38,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				return err
 			},
 		}
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 
@@ -38,6 +51,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			activeOnly    bool
 			uniqueNames   bool
 			tags          []string
+			commonFlags   CommonFlags
 		)
 		cmd := &cobra.Command{
 			Use:   "list [OPTIONS...]",
@@ -58,7 +72,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdList(connection, filter, activeOnly, listFormat, uniqueNames)
@@ -73,6 +88,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().BoolVarP(&activeOnly, "active-only", "a", false, "Show only active tasks (exclude deactivated)")
 		cmd.Flags().BoolVarP(&uniqueNames, "unique-names", "u", false, "If multiple tasks with the same name are found, select the one with most recent id")
 		cmd.Flags().StringVarP(&format, "format", "f", "default", "Output format: default, detailed or json.")
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 
@@ -87,6 +103,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			maxSubsequentFailures  int
 			tags                   []string
 			noAutoRun              bool
+			commonFlags            CommonFlags
 		)
 
 		longDescription := "Schedule a new task. By default all option arguments (starting with hyphens) will be interpreted " +
@@ -113,7 +130,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend(!noAutoRun)
+				allowAutorun := !noAutoRun && commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
@@ -141,12 +159,14 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Specify comma-separated list of tags for the task. Task do not have any effect, but they can be used to filter tasks.")
 		cmd.Flags().BoolVar(&noAutoRun, "no-auto-run", false, "Do not automatically start the backend if it is not running")
+		AddCommonFlags(cmd, &commonFlags)
 		cmd.MarkFlagRequired("display")
 
 		commands = append(commands, cmd)
 	}
 
 	{
+		var commonFlags CommonFlags
 		cmd := &cobra.Command{
 			Use:   "peek TASK_ID [OPTIONS...]",
 			Short: "Displays logs of a given task",
@@ -157,7 +177,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return fmt.Errorf("invalid integer: %v", err)
 				}
 
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					err = CmdWatchTaskLog(connection, taskId, nil)
@@ -165,16 +186,19 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				return err
 			},
 		}
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 
 	{
+		var commonFlags CommonFlags
 		cmd := &cobra.Command{
 			Use:   "check",
 			Short: "Checks whether the backend is running and can be connected to",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					fmt.Println("backend works correctly")
@@ -183,6 +207,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				return errors.New("cannot connect to backend")
 			},
 		}
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 
@@ -191,6 +216,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			idFilter      int
 			anyNameFilter []string
 			allTagsFilter []string
+			commonFlags   CommonFlags
 		)
 		cmd := &cobra.Command{
 			Use:   "refresh",
@@ -203,7 +229,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					AllTagsFilter: allTagsFilter,
 				}
 
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err != nil {
 					return errors.New("cannot connect to backend")
 				}
@@ -214,11 +241,15 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().IntVarP(&idFilter, "id", "i", math.MaxInt, "Filter tasks by id")
 		cmd.Flags().StringSliceVarP(&anyNameFilter, "names", "n", []string{}, "Filter tasks by friendly names. Multiple names can be specified (comma separated) to allow multiple results")
 		cmd.Flags().StringSliceVarP(&allTagsFilter, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 
 	{
-		var watch bool
+		var (
+			watch       bool
+			commonFlags CommonFlags
+		)
 		cmd := &cobra.Command{
 			Use:   "reschedule TASK_ID [OPTIONS...]",
 			Short: "Reschedule a deactivated task by its ID.",
@@ -229,7 +260,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
-				connection, err := ConnectToBackend(false)
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
 					response, err := CmdReschedule(connection, taskId)
@@ -248,6 +280,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			},
 		}
 		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}
 

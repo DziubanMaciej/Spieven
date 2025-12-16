@@ -134,7 +134,7 @@ func RunServer(frequentTrim bool, allowRemoteConnections bool, displayKillGraceP
 	backendState.handshakeValue = handshakeValue
 
 	// Create socket
-	listener, err := net.Listen("tcp4", common.HostWithPort)
+	listener, err := net.Listen("tcp4", fmt.Sprintf("localhost:%s", buildopts.DefaultPort))
 	if err != nil {
 		return err
 	}

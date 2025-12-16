@@ -2,25 +2,50 @@ package frontend
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"spieven/common"
 	"spieven/common/buildopts"
 	"spieven/common/packet"
+	"strconv"
 	"syscall"
 	"time"
 )
 
-func ConnectToBackend(allowAutorun bool) (net.Conn, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", common.HostWithPort)
+func ConnectToBackend(allowAutorun bool, serverAddress string, serverPort int) (net.Conn, error) {
+	var isCustomAddress bool = true
+
+	// Validate server port
+	if serverPort == 0 {
+		isCustomAddress = false
+
+		portStr := buildopts.DefaultPort
+		var err error
+		serverPort, err = strconv.Atoi(portStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid default port: %w", err)
+		}
+	}
+
+	// Validate server address
+	if serverAddress == "" {
+		isCustomAddress = false
+
+		serverAddress = "localhost"
+	}
+
+	// Build the address struct
+	hostWithPort := fmt.Sprintf("%s:%d", serverAddress, serverPort)
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", hostWithPort)
 	if err != nil {
 		return nil, err
 	}
 
 	connection, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if err != nil {
-		if buildopts.AutorunBackend && allowAutorun {
+		if buildopts.AutorunBackend && allowAutorun && !isCustomAddress {
 			spievenBinary := os.Args[0]
 			cmd := exec.Command(spievenBinary, "serve")
 			cmd.Stdin = nil
