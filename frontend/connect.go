@@ -49,6 +49,7 @@ func ConnectToBackend() (net.Conn, error) {
 	if buildopts.HandshakeValidationEnabled {
 		handshakeValue, err := common.CalculateSpievenFileHash()
 		if err != nil {
+			connection.Close()
 			return nil, err
 		}
 
