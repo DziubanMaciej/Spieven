@@ -542,3 +542,44 @@ func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleRe
 		return nil, err
 	}
 }
+
+func CmdStop(backendConnection net.Conn, taskId int) error {
+	request := packet.StopRequestBody{
+		TaskId: taskId,
+	}
+
+	requestPacket, err := packet.EncodeStopPacket(request)
+	if err != nil {
+		return err
+	}
+
+	err = packet.SendPacket(backendConnection, requestPacket)
+	if err != nil {
+		return err
+	}
+
+	responsePacket, err := packet.ReceivePacket(backendConnection)
+	if err != nil {
+		return err
+	}
+
+	response, err := packet.DecodeStopResponsePacket(responsePacket)
+	if err != nil {
+		return err
+	}
+
+	switch response.Status {
+	case types.StopResponseStatusSuccess:
+		fmt.Println("Stopped task")
+		return nil
+	case types.StopResponseStatusTaskNotFound:
+		err = errors.New("task not found")
+		return err
+	case types.StopResponseStatusAlreadyStopped:
+		err = errors.New("task is already stopped")
+		return err
+	default:
+		err = errors.New("unknown stop error")
+		return err
+	}
+}

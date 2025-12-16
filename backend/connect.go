@@ -110,6 +110,15 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
+		case packet.PacketIdStop:
+			request, err := packet.DecodeStopPacket(requestPacket)
+			if err != nil {
+				return
+			}
+			err = CmdStop(backendState, connection, request)
+			if err != nil {
+				return
+			}
 		default:
 			backendState.messages.AddF(i.BackendMessageInfo, nil, "Rejecting frontend request due to invalid packet")
 			return

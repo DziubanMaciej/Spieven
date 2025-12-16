@@ -18,6 +18,7 @@ const (
 	PacketIdQueryTaskActive
 	PacketIdRefresh
 	PacketIdReschedule
+	PacketIdStop
 
 	// Backend->Frontend commands
 	PacketIdScheduleResponse
@@ -26,6 +27,7 @@ const (
 	PacketIdQueryTaskActiveResponse
 	PacketIdRefreshResponse
 	PacketIdRescheduleResponse
+	PacketIdStopResponse
 )
 
 type Packet struct {

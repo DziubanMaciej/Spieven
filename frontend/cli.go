@@ -284,5 +284,30 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		commands = append(commands, cmd)
 	}
 
+	{
+		var commonFlags CommonFlags
+		cmd := &cobra.Command{
+			Use:   "stop TASK_ID [OPTIONS...]",
+			Short: "Manually deactivate a task by its ID.",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				taskId, err := strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+
+				allowAutorun := commonFlags.serverAddress == "" && commonFlags.serverPort == 0
+				connection, err := ConnectToBackend(allowAutorun, commonFlags.serverAddress, commonFlags.serverPort)
+				if err == nil {
+					defer connection.Close()
+					err = CmdStop(connection, taskId)
+				}
+				return err
+			},
+		}
+		AddCommonFlags(cmd, &commonFlags)
+		commands = append(commands, cmd)
+	}
+
 	return
 }

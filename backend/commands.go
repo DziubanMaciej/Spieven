@@ -308,3 +308,59 @@ func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, requ
 
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
+
+func CmdStop(backendState *BackendState, frontendConnection net.Conn, request packet.StopRequestBody) error {
+	sched := &backendState.scheduler
+
+	var response packet.StopResponseBody
+	var foundTask *scheduler.Task
+
+	sched.Lock()
+
+	// First check if task ID is valid
+	if sched.IsValidId(request.TaskId) {
+		// Look for the task in memory
+		for _, task := range sched.GetTasks() {
+			if task.Computed.Id == request.TaskId {
+				foundTask = task
+				break
+			}
+		}
+
+		if foundTask != nil && !foundTask.Dynamic.IsDeactivated {
+			select {
+			case foundTask.Channels.StopChannel <- "manually stopped":
+			default:
+				// Channel is full, but that's okay - multiple stop signals wouldn't change anything
+			}
+			response.Status = types.StopResponseStatusSuccess
+		} else {
+			// Task deactivated - either paged out or still in memory. This means the task is already stopped.
+			response.Status = types.StopResponseStatusAlreadyStopped
+		}
+	} else {
+		response.Status = types.StopResponseStatusTaskNotFound
+	}
+
+	sched.Unlock()
+
+	switch response.Status {
+	case types.StopResponseStatusSuccess:
+		backendState.messages.AddF(i.BackendMessageInfo, foundTask, "Stopped task %v", request.TaskId)
+	case types.StopResponseStatusTaskNotFound:
+		backendState.messages.AddF(i.BackendMessageError, nil, "Task %v not found", request.TaskId)
+	case types.StopResponseStatusAlreadyStopped:
+		backendState.messages.AddF(i.BackendMessageError, nil, "Task %v is already stopped", request.TaskId)
+	default:
+		// Shouldn't happen, but let's handle it gracefully
+		backendState.messages.Add(i.BackendMessageError, nil, "Unknown stop error")
+		response.Status = types.StopResponseStatusUnknown
+	}
+
+	responsePacket, err := packet.EncodeStopResponsePacket(response)
+	if err != nil {
+		return err
+	}
+
+	return packet.SendPacket(frontendConnection, responsePacket)
+}
