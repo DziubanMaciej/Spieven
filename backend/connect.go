@@ -3,12 +3,13 @@ package backend
 import (
 	"fmt"
 	"net"
+	"time"
+
 	i "spieven/backend/interfaces"
 	"spieven/common"
 	"spieven/common/buildopts"
 	"spieven/common/packet"
 	"spieven/common/types"
-	"time"
 )
 
 func ValidateHandshake(connection net.Conn, backendState *BackendState) error {

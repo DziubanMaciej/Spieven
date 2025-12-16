@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -28,6 +29,32 @@ func (t DisplaySelectionType) String() string {
 	default:
 		return "invalid"
 	}
+}
+
+func (t DisplaySelectionType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t *DisplaySelectionType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	switch s {
+	case "none":
+		*t = DisplaySelectionTypeNone
+	case "headless":
+		*t = DisplaySelectionTypeHeadless
+	case "xorg":
+		*t = DisplaySelectionTypeXorg
+	case "wayland":
+		*t = DisplaySelectionTypeWayland
+	default:
+		return fmt.Errorf("invalid DisplaySelectionType: %q", s)
+	}
+
+	return nil
 }
 
 type DisplaySelection struct {
