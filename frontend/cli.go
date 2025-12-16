@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"spieven/common/types"
+	ftypes "spieven/frontend/types"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -33,10 +34,9 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			idFilter                 int
 			anyNameFilter            []string
 			display                  string
-			shortOutput              bool
+			format                   string
 			includeDeactivated       bool
 			includeDeactivatedAlways bool
-			jsonOutput               bool
 			uniqueNames              bool
 			tags                     []string
 		)
@@ -45,6 +45,11 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Short: "Display a list of running tasks",
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
+				listFormat, err := ftypes.ParseListFormat(format)
+				if err != nil {
+					return err
+				}
+
 				filter := types.TaskFilter{
 					IdFilter:      idFilter,
 					AnyNameFilter: anyNameFilter,
@@ -57,7 +62,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend()
 				if err == nil {
 					defer connection.Close()
-					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, jsonOutput, shortOutput, uniqueNames)
+					err = CmdList(connection, filter, includeDeactivated, includeDeactivatedAlways, listFormat, uniqueNames)
 				}
 				return err
 			},
@@ -69,8 +74,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().BoolVarP(&includeDeactivated, "include-deactivated", "d", false, "Include deactivated tasks if no tasks were found among active ones")
 		cmd.Flags().BoolVarP(&includeDeactivatedAlways, "include-deactivated-always", "D", false, "Include deactivated tasks as well as active ones")
 		cmd.Flags().BoolVarP(&uniqueNames, "unique-names", "u", false, "If multiple tasks with the same name are found, select the one with most recent id")
-		cmd.Flags().BoolVarP(&shortOutput, "short", "s", false, "Display a short one-line-per-task table")
-		cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Display output as json.")
+		cmd.Flags().StringVarP(&format, "format", "f", "default", "Output format: default, detailed or json.")
 		commands = append(commands, cmd)
 	}
 

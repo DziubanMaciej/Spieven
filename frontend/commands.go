@@ -8,6 +8,7 @@ import (
 	"os"
 	"spieven/common/packet"
 	"spieven/common/types"
+	ftypes "spieven/frontend/types"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -47,8 +48,7 @@ func CmdList(
 	filter types.TaskFilter,
 	includeDeactivated bool,
 	includeDeactivatedAlways bool,
-	jsonOutput bool,
-	shortOutput bool,
+	format ftypes.ListFormat,
 	uniqueNames bool,
 ) error {
 	request := packet.ListRequestBody{
@@ -78,27 +78,26 @@ func CmdList(
 		return err
 	}
 
-	if jsonOutput {
+	switch format {
+	case ftypes.ListFormatJson:
 		output, err := json.MarshalIndent(response, "", "    ")
 		if err != nil {
 			return errors.New("failed generating json report")
 		}
 		fmt.Println(string(output))
 		return nil
-	}
 
-	if len(response) == 0 {
-		filter.Derive()
-		if filter.HasAnyFilter {
-			fmt.Println("no tasks match the requested criteria")
-		} else {
-			fmt.Println("no tasks found")
+	case ftypes.ListFormatDefault:
+		if len(response) == 0 {
+			filter.Derive()
+			if filter.HasAnyFilter {
+				fmt.Println("no tasks match the requested criteria")
+			} else {
+				fmt.Println("no tasks found")
+			}
+			return nil
 		}
-		return nil
-	}
 
-	if shortOutput {
-		// Generic short, one-line-per-task table with dynamic Column widths.
 		type Column struct {
 			header string
 			get    func(task *packet.ListResponseBodyItem) string
@@ -212,7 +211,18 @@ func CmdList(
 			}
 			fmt.Printf(format, rowArgs...)
 		}
-	} else {
+
+	case ftypes.ListFormatDetailed:
+		if len(response) == 0 {
+			filter.Derive()
+			if filter.HasAnyFilter {
+				fmt.Println("no tasks match the requested criteria")
+			} else {
+				fmt.Println("no tasks found")
+			}
+			return nil
+		}
+
 		// Default verbose output
 		for i, task := range response {
 			activeStr := "Yes"
@@ -237,6 +247,8 @@ func CmdList(
 				fmt.Println()
 			}
 		}
+	default:
+		return fmt.Errorf("unsupported format value %v", format)
 	}
 
 	return nil
