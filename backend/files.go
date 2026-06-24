@@ -77,9 +77,10 @@ func (files *FilePathProvider) GetTaskLogFile(taskId int) string {
 	return path.Join(files.TaskLogsDir, fileName)
 }
 
-func (files *FilePathProvider) GetStdoutLogFile(taskId int, executionId int) string {
-	fileName := fmt.Sprintf("task_%03d_stdout_%03d.log", taskId, executionId)
-	return path.Join(files.TaskLogsDir, fileName)
+func (files *FilePathProvider) GetStdoutStderrLogFiles(taskId int, executionId int) (string, string) {
+	stdoutFileName := fmt.Sprintf("task_%03d_stdout_%03d.log", taskId, executionId)
+	stderrFileName := fmt.Sprintf("task_%03d_stderr_%03d.log", taskId, executionId)
+	return path.Join(files.TaskLogsDir, stdoutFileName), path.Join(files.TaskLogsDir, stderrFileName)
 }
 
 func (files *FilePathProvider) GetBackendMessagesLogFile() string {

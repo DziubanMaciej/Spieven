@@ -8,6 +8,7 @@ type ScheduleRequestBody struct {
 	Env                   []string
 	FriendlyName          string
 	CaptureStdout         bool
+	CaptureStderr         bool
 	Display               types.DisplaySelection
 	DelayAfterSuccessMs   int
 	DelayAfterFailureMs   int

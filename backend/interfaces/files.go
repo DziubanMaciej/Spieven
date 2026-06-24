@@ -6,6 +6,6 @@ type IFiles interface {
 	GetTmpFile() (*os.File, error)
 	GetDeactivatedTasksFile() string
 	GetTaskLogFile(taskId int) string
-	GetStdoutLogFile(taskId int, executionId int) string
+	GetStdoutStderrLogFiles(taskId int, executionId int) (string, string)
 	GetBackendMessagesLogFile() string
 }

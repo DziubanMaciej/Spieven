@@ -18,7 +18,7 @@ func ExecuteTask(
 	messages i.IMessages,
 ) {
 	// Initialize per-task logger
-	perTaskLogger := CreateFileLogger(files, goroutines, task.Computed.Id, task.CaptureStdout)
+	perTaskLogger := CreateFileLogger(files, goroutines, task.Computed.Id, task.CaptureStdout, task.CaptureStderr)
 	err := perTaskLogger.run()
 	if err != nil {
 		messages.Add(i.BackendMessageError, task, "failed to create per-task logger")
@@ -117,11 +117,11 @@ func ExecuteTask(
 		var pipeWaitGroup sync.WaitGroup
 		pipeWaitGroup.Add(2)
 		goroutines.StartGoroutine(func() {
-			perTaskLogger.streamOutput(stdoutPipe)
+			perTaskLogger.streamOutput(stdoutPipe, false)
 			pipeWaitGroup.Done()
 		})
 		goroutines.StartGoroutine(func() {
-			perTaskLogger.streamOutput(stderrPipe)
+			perTaskLogger.streamOutput(stderrPipe, true)
 			pipeWaitGroup.Done()
 		})
 
@@ -153,25 +153,29 @@ func ExecuteTask(
 			if exitCode == 0 {
 				commandSuccess = true
 			}
-		case <-perTaskLogger.errorChannel:
+		case response := <-perTaskLogger.outChannel:
 			// Logger failed. We don't want to execute the command without logging. Kill it and return error.
-			log(LogDeactivation|LogFlagErr, "Failed logging.")
+			logF(LogDeactivation|LogFlagErr, "Failed logging: %v", response.err.Error())
 		case reason := <-task.Channels.StopChannel:
 			logF(LogDeactivation, "Task killed (%v).", reason)
 		}
 
-		// Send a separator to the per-task logger and wait for its response via channel. If it's valid, assign
-		// it the task's dynamic state.
+		// Send a separator to the per-task logger to notify it that the task execution ended. Wait for its response via channel.
+		// It will respond with paths of stdout/stderr files that were just closed. If they are valid, assign them to the task's
+		// dynamic state.
 		{
 			log(LogTask|LogFlagTaskSeparator, "")
-			stdoutPath := <-perTaskLogger.stdoutFilePathChannel
+			response := <-perTaskLogger.outChannel
 
-			if stdoutPath != "" && !common.FileExists(stdoutPath) {
-				logF(LogBackend|LogFlagErr, "Incorrect stdout file path from per-task logger: %v", stdoutPath)
-				stdoutPath = ""
+			if response.stdoutFilePath != "" && !common.FileExists(response.stdoutFilePath) {
+				logF(LogBackend|LogFlagErr, "Incorrect stdout file path from per-task logger: %v", response.stdoutFilePath)
+			}
+			if response.stderrFilePath != "" && !common.FileExists(response.stderrFilePath) {
+				logF(LogBackend|LogFlagErr, "Incorrect stderr file path from per-task logger: %v", response.stderrFilePath)
 			}
 
-			shadowDynamicState.LastStdoutFilePath = stdoutPath
+			shadowDynamicState.LastStdoutFilePath = response.stdoutFilePath
+			shadowDynamicState.LastStderrFilePath = response.stderrFilePath
 		}
 
 		// Update execution and failure counts

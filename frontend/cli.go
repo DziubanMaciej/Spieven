@@ -95,6 +95,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			friendlyName           string
 			watch                  bool
 			captureStdout          bool
+			captureStderr          bool
 			display                string
 			rerunDelayAfterSuccess int
 			rerunDelayAfterFailure int
@@ -131,7 +132,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend(!noAutoRun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
-					response, err := CmdSchedule(connection, args, friendlyName, captureStdout,
+					response, err := CmdSchedule(connection, args, friendlyName, captureStdout, captureStderr,
 						displaySelection, rerunDelayAfterSuccess, rerunDelayAfterFailure, maxSubsequentFailures, tags)
 					if err != nil {
 						return err
@@ -150,6 +151,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().StringVarP(&friendlyName, "friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
 		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
 		cmd.Flags().BoolVarP(&captureStdout, "capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
+		cmd.Flags().BoolVarP(&captureStderr, "capture-stderr", "e", false, "Capture stderr to a separate file. This is required to be able to query stderr contents later.")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
 		cmd.Flags().IntVarP(&rerunDelayAfterSuccess, "delay-after-success", "s", 0, "Delay in milliseconds before rerunning scheduled command after a successful execution")
 		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")

@@ -26,6 +26,7 @@ type Task struct {
 	MaxSubsequentFailures int
 	FriendlyName          string
 	CaptureStdout         bool
+	CaptureStderr         bool
 	Display               types.DisplaySelection
 	Tags                  []string
 
@@ -49,6 +50,7 @@ type Task struct {
 		SubsequentFailureCount int
 		LastExitValue          int
 		LastStdoutFilePath     string
+		LastStderrFilePath     string
 		IsDeactivated          bool
 		DeactivatedReason      string
 	}
