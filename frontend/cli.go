@@ -101,7 +101,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 	{
 		var (
 			friendlyName           string
-			watch                  bool
+			peek                   bool
 			captureStdout          bool
 			captureStderr          bool
 			display                string
@@ -146,8 +146,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 						return err
 					}
 
-					if watch {
-						err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
+					if peek {
+						err := CmdPeek(connection, response.Id, &response.LogFile)
 						if err != nil {
 							return err
 						}
@@ -157,7 +157,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			},
 		}
 		cmd.Flags().StringVarP(&friendlyName, "friendly-name", "n", "", "A friendly name for the task. It will appear in various logs for easier identification. By default an executable name will be used.")
-		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+		cmd.Flags().BoolVarP(&peek, "peek", "w", false, "Peek task log after successful running. Functionally equivalent to running spieven peek <taskId>")
 		cmd.Flags().BoolVarP(&captureStdout, "capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
 		cmd.Flags().BoolVarP(&captureStderr, "capture-stderr", "e", false, "Capture stderr to a separate file. This is required to be able to query stderr contents later.")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
@@ -187,7 +187,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
-					err = CmdWatchTaskLog(connection, taskId, nil)
+					err = CmdPeek(connection, taskId, nil)
 				}
 				return err
 			},
@@ -251,7 +251,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 
 	{
 		var (
-			watch       bool
+			peek        bool
 			commonFlags CommonFlags
 		)
 		cmd := &cobra.Command{
@@ -272,8 +272,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 						return err
 					}
 
-					if watch {
-						err := CmdWatchTaskLog(connection, response.Id, &response.LogFile)
+					if peek {
+						err := CmdPeek(connection, response.Id, &response.LogFile)
 						if err != nil {
 							return err
 						}
@@ -282,7 +282,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				return nil
 			},
 		}
-		cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch log file after successful scheduling. Functionally equivalent to running Spieven watch <taskId>")
+		cmd.Flags().BoolVarP(&peek, "peek", "w", false, "Peek task log after successful resuming. Functionally equivalent to running spieven peek <taskId>")
 		AddCommonFlags(cmd, &commonFlags)
 		commands = append(commands, cmd)
 	}

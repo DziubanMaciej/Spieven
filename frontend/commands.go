@@ -340,7 +340,7 @@ func CmdRun(
 	}
 }
 
-func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
+func CmdPeek(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
 		filter := types.TaskFilter{
 			IdFilter:           taskId,
