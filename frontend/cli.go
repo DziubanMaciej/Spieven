@@ -47,7 +47,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			anyNameFilter []string
 			display       string
 			format        string
-			activeOnly    bool
+			status        string
 			uniqueNames   bool
 			tags          []string
 			commonFlags   CommonFlags
@@ -62,10 +62,18 @@ func CreateCliCommands() (commands []*cobra.Command) {
 					return err
 				}
 
+				var taskStatusFilter ftypes.TaskStatusFilter
+				taskStatusFilter, err = ftypes.ParseTaskStatusFilter(status)
+				if err != nil {
+					return err
+				}
+
 				filter := types.TaskFilter{
-					IdFilter:      idFilter,
-					AnyNameFilter: anyNameFilter,
-					AllTagsFilter: tags,
+					IdFilter:           idFilter,
+					AnyNameFilter:      anyNameFilter,
+					AllTagsFilter:      tags,
+					IncludeActive:      taskStatusFilter == ftypes.TaskStatusFilterAll || taskStatusFilter == ftypes.TaskStatusFilterActive,
+					IncludeDeactivated: taskStatusFilter == ftypes.TaskStatusFilterAll || taskStatusFilter == ftypes.TaskStatusFilterInactive,
 				}
 				if err := filter.DisplayFilter.ParseDisplaySelection(display, true); err != nil {
 					return err
@@ -74,7 +82,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
-					err = CmdList(connection, filter, activeOnly, listFormat, uniqueNames)
+					err = CmdList(connection, filter, listFormat, uniqueNames)
 				}
 				return err
 			},
@@ -83,7 +91,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().StringSliceVarP(&anyNameFilter, "names", "n", []string{}, "Filter tasks by friendly names. Multiple names can be specified (comma separated) to allow multiple results")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Filter tasks by display. "+types.DisplaySelectionHelpString)
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Filter tasks by tags. Multiple tags can be specified (comma separated) to require multiple tags to be present")
-		cmd.Flags().BoolVarP(&activeOnly, "active-only", "a", false, "Show only active tasks (exclude deactivated)")
+		cmd.Flags().StringVarP(&status, "status", "s", "all", "Task status filter. One of "+ftypes.TaskStatusFilterStrValues)
 		cmd.Flags().BoolVarP(&uniqueNames, "unique-names", "u", false, "If multiple tasks with the same name are found, select the one with most recent id")
 		cmd.Flags().StringVarP(&format, "format", "f", "default", "Output format: default, detailed or json.")
 		AddCommonFlags(cmd, &commonFlags)

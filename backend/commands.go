@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	"net"
 	i "spieven/backend/interfaces"
 	"spieven/backend/scheduler"
@@ -33,6 +34,18 @@ func getSelectorFunc(filter *types.TaskFilter) func(*scheduler.Task) bool {
 		prev := selector
 		selector = func(task *scheduler.Task) bool {
 			return prev(task) && common.ContainsAll(filter.AllTagsFilter, task.Tags)
+		}
+	}
+	if !filter.IncludeActive {
+		prev := selector
+		selector = func(task *scheduler.Task) bool {
+			return prev(task) && task.Dynamic.IsDeactivated
+		}
+	}
+	if !filter.IncludeDeactivated {
+		prev := selector
+		selector = func(task *scheduler.Task) bool {
+			return prev(task) && !task.Dynamic.IsDeactivated
 		}
 	}
 	return selector
@@ -97,34 +110,24 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 
 	sched.Lock()
 
-	// Prepare a selector function, that returns true when a task should be sent back to the frontend.
+	// Retrieve in-memory tasks based on the request filter. We generate a selector function from the filter, which
+	// returns true whenever a task satisfies all the filters.
 	selector := getSelectorFunc(&request.Filter)
-
-	// Prepare helper functions to list tasks from memory or from disc. The in-memory list can contain both active tasks
-	// and already deactivated tasks that were not yet paged to a file.
-	getTasksFromMemory := func(allowDeactivated bool) {
-		for _, task := range sched.GetTasks() {
-			if selector(task) && (allowDeactivated || !task.Dynamic.IsDeactivated) {
-				appendTask(task)
-			}
+	for _, task := range sched.GetTasks() {
+		if selector(task) {
+			appendTask(task)
 		}
 	}
-	getTasksFromDeactivatedFile := func() {
-		tasks := sched.ReadTrimmedTasks(backendState.messages, backendState.files)
-		for _, task := range tasks {
+
+	// Some deactivated tasks may have been trimmed from memory and saved to disc. If deactivated tasks are requsted,
+	// we have to read the file and retrieve them.
+	if request.Filter.IncludeDeactivated {
+		trimmedTasks := sched.ReadTrimmedTasks(backendState.messages, backendState.files)
+		for _, task := range trimmedTasks {
 			if selector(task) {
 				appendTask(task)
 			}
 		}
-	}
-
-	// Retrieve tasks based on ActiveOnly flag. If we need only active tasks, we only have to look at in memory tasks. Otherwise,
-	// we also include deactivated tasks that are either still in memory or were paged out to a file.
-	if request.ActiveOnly {
-		getTasksFromMemory(false)
-	} else {
-		getTasksFromMemory(true)
-		getTasksFromDeactivatedFile()
 	}
 
 	sched.Unlock()

@@ -4,7 +4,6 @@ import "spieven/common/types"
 
 type ListRequestBody struct {
 	Filter      types.TaskFilter
-	ActiveOnly  bool
 	UniqueNames bool
 }
 

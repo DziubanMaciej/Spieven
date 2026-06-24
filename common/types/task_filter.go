@@ -3,10 +3,12 @@ package types
 import "math"
 
 type TaskFilter struct {
-	IdFilter      int
-	AnyNameFilter []string
-	DisplayFilter DisplaySelection
-	AllTagsFilter []string
+	IdFilter           int
+	AnyNameFilter      []string
+	DisplayFilter      DisplaySelection
+	AllTagsFilter      []string
+	IncludeActive      bool
+	IncludeDeactivated bool
 
 	HasIdFilter      bool `json:"-"`
 	HasAnyNameFilter bool `json:"-"`

@@ -46,13 +46,11 @@ func CmdLog(backendConnection net.Conn) error {
 func CmdList(
 	backendConnection net.Conn,
 	filter types.TaskFilter,
-	activeOnly bool,
 	format ftypes.ListFormat,
 	uniqueNames bool,
 ) error {
 	request := packet.ListRequestBody{
 		Filter:      filter,
-		ActiveOnly:  activeOnly,
 		UniqueNames: uniqueNames,
 	}
 
@@ -149,11 +147,11 @@ func CmdList(
 				header: "Failures",
 				get: func(task *packet.ListResponseBodyItem) string {
 					maxFailures := task.MaxSubsequentFailures
-					maxFailuresStr := "inf"
+					maxFailuresStr := ""
 					if maxFailures >= 0 {
-						maxFailuresStr = fmt.Sprintf("%d", maxFailures)
+						maxFailuresStr = fmt.Sprintf("/%d", maxFailures)
 					}
-					return fmt.Sprintf("%d/%s", task.FailureCount, maxFailuresStr)
+					return fmt.Sprintf("%d%s", task.FailureCount, maxFailuresStr)
 				},
 				width: 0,
 			},
@@ -344,11 +342,12 @@ func CmdSchedule(
 
 func CmdWatchTaskLog(backendConnection net.Conn, taskId int, logFilePath *string) error {
 	retrieveLogFilePath := func() (string, error) {
-		filter := types.TaskFilter{IdFilter: taskId}
-		request := packet.ListRequestBody{
-			Filter:     filter,
-			ActiveOnly: false,
+		filter := types.TaskFilter{
+			IdFilter:           taskId,
+			IncludeActive:      true,
+			IncludeDeactivated: true,
 		}
+		request := packet.ListRequestBody{Filter: filter}
 
 		requestPacket, err := packet.EncodeListPacket(request)
 		if err != nil {
