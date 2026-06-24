@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"fmt"
 	"net"
 	i "spieven/backend/interfaces"
 	"spieven/backend/scheduler"
@@ -160,7 +159,7 @@ func CmdList(backendState *BackendState, frontendConnection net.Conn, request pa
 	return packet.SendPacket(frontendConnection, reponsePacket)
 }
 
-func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, request packet.ScheduleRequestBody) error {
+func CmdRun(backendState *BackendState, frontendConnection net.Conn, request packet.RunRequestBody) error {
 	sched := &backendState.scheduler
 
 	task := scheduler.Task{
@@ -178,31 +177,31 @@ func CmdSchedule(backendState *BackendState, frontendConnection net.Conn, reques
 	}
 
 	sched.Lock()
-	responseStatus := sched.TryScheduleTask(&task, backendState.files, backendState.displays, backendState.sync, backendState.messages)
+	responseStatus := sched.TryRunTask(&task, backendState.files, backendState.displays, backendState.sync, backendState.messages)
 	sched.Unlock()
 
-	response := packet.ScheduleResponseBody{
+	response := packet.RunResponseBody{
 		Id:      task.Computed.Id,
 		Status:  responseStatus,
 		LogFile: task.Computed.OutFilePath,
 	}
 
 	switch responseStatus {
-	case types.ScheduleResponseStatusSuccess:
-		backendState.messages.Add(i.BackendMessageInfo, &task, "Scheduled task")
-	case types.ScheduleResponseStatusAlreadyRunning:
+	case types.RunResponseStatusSuccess:
+		backendState.messages.Add(i.BackendMessageInfo, &task, "Successfully run task")
+	case types.RunResponseStatusAlreadyRunning:
 		backendState.messages.Add(i.BackendMessageError, nil, "Task already running")
-	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+	case types.RunResponseStatusNameDisplayAlreadyRunning:
 		backendState.messages.AddF(i.BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
-	case types.ScheduleResponseStatusInvalidDisplay:
+	case types.RunResponseStatusInvalidDisplay:
 		backendState.messages.Add(i.BackendMessageError, nil, "Task uses invalid display")
 	default:
 		// Shouldn't happen, but let's handle it gracefully
-		backendState.messages.Add(i.BackendMessageError, nil, "Unknown scheduling error")
-		response.Status = types.ScheduleResponseStatusUnknown
+		backendState.messages.Add(i.BackendMessageError, nil, "Unknown running error")
+		response.Status = types.RunResponseStatusUnknown
 	}
 
-	responsePacket, err := packet.EncodeScheduleResponsePacket(response)
+	responsePacket, err := packet.EncodeRunResponsePacket(response)
 	if err != nil {
 		return err
 	}
@@ -267,16 +266,16 @@ func CmdRefresh(backendState *BackendState, frontendConnection net.Conn, request
 	return packet.SendPacket(frontendConnection, responsePacket)
 }
 
-func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, request packet.RescheduleRequestBody) error {
+func CmdResume(backendState *BackendState, frontendConnection net.Conn, request packet.ResumeRequestBody) error {
 	sched := &backendState.scheduler
 
-	var response packet.RescheduleResponseBody
+	var response packet.ResumeResponseBody
 
 	sched.Lock()
 
 	task, status := sched.ExtractDeactivatedTask(request.TaskId, backendState.files, backendState.messages)
-	if status == types.ScheduleResponseStatusSuccess {
-		response.Status = sched.TryRescheduleTask(task, backendState.files, backendState.displays, backendState.sync, backendState.messages)
+	if status == types.RunResponseStatusSuccess {
+		response.Status = sched.TryResumeTask(task, backendState.files, backendState.displays, backendState.sync, backendState.messages)
 		response.LogFile = task.Computed.OutFilePath
 		response.Id = task.Computed.Id
 	} else {
@@ -287,25 +286,25 @@ func CmdReschedule(backendState *BackendState, frontendConnection net.Conn, requ
 	sched.Unlock()
 
 	switch response.Status {
-	case types.ScheduleResponseStatusSuccess:
-		backendState.messages.AddF(i.BackendMessageInfo, task, "Rescheduled task %v", request.TaskId)
-	case types.ScheduleResponseStatusAlreadyRunning:
+	case types.RunResponseStatusSuccess:
+		backendState.messages.AddF(i.BackendMessageInfo, task, "Resumed task %v", request.TaskId)
+	case types.RunResponseStatusAlreadyRunning:
 		backendState.messages.Add(i.BackendMessageError, nil, "Task already running")
-	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+	case types.RunResponseStatusNameDisplayAlreadyRunning:
 		backendState.messages.AddF(i.BackendMessageError, nil, "Task named %v already present on \"%v\" display", task.FriendlyName, task.Display.ComputeDisplayLabel())
-	case types.ScheduleResponseStatusInvalidDisplay:
+	case types.RunResponseStatusInvalidDisplay:
 		backendState.messages.Add(i.BackendMessageError, nil, "Task uses invalid display")
-	case types.ScheduleResponseStatusTaskNotFound:
+	case types.RunResponseStatusTaskNotFound:
 		backendState.messages.AddF(i.BackendMessageError, nil, "Task %v not found", request.TaskId)
-	case types.ScheduleResponseStatusTaskNotDeactivated:
-		backendState.messages.AddF(i.BackendMessageError, nil, "Task %v is active, cannot reschedule", request.TaskId)
+	case types.RunResponseStatusTaskNotDeactivated:
+		backendState.messages.AddF(i.BackendMessageError, nil, "Task %v is active, cannot resume", request.TaskId)
 	default:
 		// Shouldn't happen, but let's handle it gracefully
-		backendState.messages.Add(i.BackendMessageError, nil, "Unknown rescheduling error")
-		response.Status = types.ScheduleResponseStatusUnknown
+		backendState.messages.Add(i.BackendMessageError, nil, "Unknown resuming error")
+		response.Status = types.RunResponseStatusUnknown
 	}
 
-	responsePacket, err := packet.EncodeRescheduleResponsePacket(response)
+	responsePacket, err := packet.EncodeResumeResponsePacket(response)
 	if err != nil {
 		return err
 	}

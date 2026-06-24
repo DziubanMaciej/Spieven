@@ -12,21 +12,21 @@ type PacketId byte
 const (
 	// Frontend->Backend commands
 	PacketIdHandshake PacketId = iota
-	PacketIdSchedule
+	PacketIdRun
 	PacketIdList
 	PacketIdLog
 	PacketIdQueryTaskActive
 	PacketIdRefresh
-	PacketIdReschedule
+	PacketIdResume
 	PacketIdStop
 
 	// Backend->Frontend commands
-	PacketIdScheduleResponse
+	PacketIdRunResponse
 	PacketIdListResponse
 	PacketIdLogResponse
 	PacketIdQueryTaskActiveResponse
 	PacketIdRefreshResponse
-	PacketIdRescheduleResponse
+	PacketIdResumeResponse
 	PacketIdStopResponse
 )
 

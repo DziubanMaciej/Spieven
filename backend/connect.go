@@ -74,12 +74,12 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case packet.PacketIdSchedule:
-			request, err := packet.DecodeSchedulePacket(requestPacket)
+		case packet.PacketIdRun:
+			request, err := packet.DecodeRunPacket(requestPacket)
 			if err != nil {
 				return
 			}
-			err = CmdSchedule(backendState, connection, request)
+			err = CmdRun(backendState, connection, request)
 			if err != nil {
 				return
 			}
@@ -101,12 +101,12 @@ func HandleConnection(backendState *BackendState, connection net.Conn) {
 			if err != nil {
 				return
 			}
-		case packet.PacketIdReschedule:
-			request, err := packet.DecodeReschedulePacket(requestPacket)
+		case packet.PacketIdResume:
+			request, err := packet.DecodeResumePacket(requestPacket)
 			if err != nil {
 				return
 			}
-			err = CmdReschedule(backendState, connection, request)
+			err = CmdResume(backendState, connection, request)
 			if err != nil {
 				return
 			}

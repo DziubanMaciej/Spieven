@@ -104,7 +104,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 	taskId int,
 	files i.IFiles,
 	messages i.IMessages,
-) (*Task, types.ScheduleResponseStatus) {
+) (*Task, types.RunResponseStatus) {
 	scheduler.lock.AssertLocked()
 
 	var extractedTask *Task
@@ -119,7 +119,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 					extractedTask = currTask
 					break
 				} else {
-					return nil, types.ScheduleResponseStatusTaskNotDeactivated
+					return nil, types.RunResponseStatusTaskNotDeactivated
 				}
 			}
 		}
@@ -129,7 +129,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 			newCount := len(scheduler.tasks) - 1
 			scheduler.tasks[indexToRemove] = scheduler.tasks[newCount]
 			scheduler.tasks = scheduler.tasks[:newCount]
-			return extractedTask, types.ScheduleResponseStatusSuccess
+			return extractedTask, types.RunResponseStatusSuccess
 		}
 
 	}
@@ -142,7 +142,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 		inputFile, err := os.OpenFile(inputFilePath, os.O_RDONLY, 0644)
 		if err != nil {
 			messages.AddF(i.BackendMessageError, nil, "Failed reading trimmed tasks: %s", err.Error())
-			return nil, types.ScheduleResponseStatusTaskNotFound
+			return nil, types.RunResponseStatusTaskNotFound
 		}
 		defer inputFile.Close()
 
@@ -152,7 +152,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 		defer outputFile.Close()
 		if err != nil {
 			messages.AddF(i.BackendMessageError, nil, "Failed opening tmp file: %s", err.Error())
-			return nil, types.ScheduleResponseStatusTaskNotFound
+			return nil, types.RunResponseStatusTaskNotFound
 		}
 
 		scanner := bufio.NewScanner(inputFile)
@@ -171,7 +171,7 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 				line = append(line, '\n')
 				if err := common.WriteBytesToWriter(outputFile, line); err != nil {
 					messages.AddF(i.BackendMessageError, nil, "Failed writing to tmp file")
-					return nil, types.ScheduleResponseStatusTaskNotFound
+					return nil, types.RunResponseStatusTaskNotFound
 				}
 			}
 		}
@@ -181,32 +181,32 @@ func (scheduler *Scheduler) ExtractDeactivatedTask(
 			outputFile.Close()
 			if err := common.CopyFile(outputFilePath, inputFilePath); err != nil {
 				messages.AddF(i.BackendMessageError, nil, "Failed copying tmp file to ndjson")
-				return nil, types.ScheduleResponseStatusTaskNotFound
+				return nil, types.RunResponseStatusTaskNotFound
 			}
 
-			return extractedTask, types.ScheduleResponseStatusSuccess
+			return extractedTask, types.RunResponseStatusSuccess
 		}
 	}
 
 	// If we're here, we didn't find the task neither in memory nor in ndjson file
-	return nil, types.ScheduleResponseStatusTaskNotFound
+	return nil, types.RunResponseStatusTaskNotFound
 }
 
-func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.ScheduleResponseStatus {
+func (scheduler *Scheduler) CheckForTaskConflict(newTask *Task) types.RunResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	for _, currTask := range scheduler.tasks {
 		if !currTask.Dynamic.IsDeactivated {
 			if currTask.Computed.Hash == newTask.Computed.Hash {
-				return types.ScheduleResponseStatusAlreadyRunning
+				return types.RunResponseStatusAlreadyRunning
 			}
 			if currTask.FriendlyName != "" && currTask.Computed.NameDisplayHash == newTask.Computed.NameDisplayHash {
-				return types.ScheduleResponseStatusNameDisplayAlreadyRunning
+				return types.RunResponseStatusNameDisplayAlreadyRunning
 			}
 		}
 	}
 
-	return types.ScheduleResponseStatusSuccess
+	return types.RunResponseStatusSuccess
 }
 
 func (scheduler *Scheduler) CheckForDisplay(
@@ -214,7 +214,7 @@ func (scheduler *Scheduler) CheckForDisplay(
 	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
-) types.ScheduleResponseStatus {
+) types.RunResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	switch newTask.Display.Type {
@@ -222,35 +222,35 @@ func (scheduler *Scheduler) CheckForDisplay(
 	case types.DisplaySelectionTypeXorg, types.DisplaySelectionTypeWayland:
 		err := displays.InitDisplay(newTask.Display, scheduler, goroutines, messages)
 		if err != nil {
-			return types.ScheduleResponseStatusInvalidDisplay
+			return types.RunResponseStatusInvalidDisplay
 		}
 	default:
 		messages.Add(i.BackendMessageError, newTask, "Invalid display type")
 	}
 
-	return types.ScheduleResponseStatusSuccess
+	return types.RunResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) TryScheduleTask(
+func (scheduler *Scheduler) TryRunTask(
 	newTask *Task,
 	files i.IFiles,
 	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
-) types.ScheduleResponseStatus {
+) types.RunResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
 	newTask.Init(scheduler.currentId, files.GetTaskLogFile(scheduler.currentId))
 	scheduler.currentId++
 
-	// Do not schedule, if a similar task is already running
-	if status := scheduler.CheckForTaskConflict(newTask); status != types.ScheduleResponseStatusSuccess {
+	// Do not run, if a similar task is already running
+	if status := scheduler.CheckForTaskConflict(newTask); status != types.RunResponseStatusSuccess {
 		return status
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.RunResponseStatusSuccess {
 		return status
 	}
 
@@ -259,28 +259,28 @@ func (scheduler *Scheduler) TryScheduleTask(
 	goroutines.StartGoroutine(func() {
 		ExecuteTask(newTask, &scheduler.lock, files, goroutines, messages)
 	})
-	return types.ScheduleResponseStatusSuccess
+	return types.RunResponseStatusSuccess
 }
 
-func (scheduler *Scheduler) TryRescheduleTask(
+func (scheduler *Scheduler) TryResumeTask(
 	newTask *Task,
 	files i.IFiles,
 	displays i.IDisplays,
 	goroutines i.IGoroutines,
 	messages i.IMessages,
-) types.ScheduleResponseStatus {
+) types.RunResponseStatus {
 	scheduler.lock.AssertLocked()
 
 	// Calculate internal properties
 	newTask.Init(newTask.Computed.Id, files.GetTaskLogFile(newTask.Computed.Id))
 
-	// Do not schedule, if a similar task is already running
-	if status := scheduler.CheckForTaskConflict(newTask); status != types.ScheduleResponseStatusSuccess {
+	// Do not resume, if a similar task is already running
+	if status := scheduler.CheckForTaskConflict(newTask); status != types.RunResponseStatusSuccess {
 		return status
 	}
 
 	// Ensure display is correct
-	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.ScheduleResponseStatusSuccess {
+	if status := scheduler.CheckForDisplay(newTask, displays, goroutines, messages); status != types.RunResponseStatusSuccess {
 		return status
 	}
 
@@ -289,7 +289,7 @@ func (scheduler *Scheduler) TryRescheduleTask(
 	goroutines.StartGoroutine(func() {
 		ExecuteTask(newTask, &scheduler.lock, files, goroutines, messages)
 	})
-	return types.ScheduleResponseStatusSuccess
+	return types.RunResponseStatusSuccess
 }
 
 func (scheduler *Scheduler) StopTasksByDisplay(display types.DisplaySelection) {

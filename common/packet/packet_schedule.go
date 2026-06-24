@@ -2,7 +2,7 @@ package packet
 
 import "spieven/common/types"
 
-type ScheduleRequestBody struct {
+type RunRequestBody struct {
 	Cmdline               []string
 	Cwd                   string
 	Env                   []string
@@ -16,26 +16,26 @@ type ScheduleRequestBody struct {
 	Tags                  []string
 }
 
-func EncodeSchedulePacket(data ScheduleRequestBody) (Packet, error) {
-	return EncodePacket(PacketIdSchedule, data)
+func EncodeRunPacket(data RunRequestBody) (Packet, error) {
+	return EncodePacket(PacketIdRun, data)
 }
 
-func DecodeSchedulePacket(packet Packet) (result ScheduleRequestBody, err error) {
-	err = DecodePacket(packet, PacketIdSchedule, &result)
+func DecodeRunPacket(packet Packet) (result RunRequestBody, err error) {
+	err = DecodePacket(packet, PacketIdRun, &result)
 	return
 }
 
-type ScheduleResponseBody struct {
-	Status  types.ScheduleResponseStatus
+type RunResponseBody struct {
+	Status  types.RunResponseStatus
 	Id      int
 	LogFile string
 }
 
-func EncodeScheduleResponsePacket(value ScheduleResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdScheduleResponse, &value)
+func EncodeRunResponsePacket(value RunResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdRunResponse, &value)
 }
 
-func DecodeScheduleResponsePacket(packet Packet) (result ScheduleResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdScheduleResponse, &result)
+func DecodeRunResponsePacket(packet Packet) (result RunResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdRunResponse, &result)
 	return
 }

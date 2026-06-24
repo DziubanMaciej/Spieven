@@ -1,13 +1,13 @@
 package types
 
-type ScheduleResponseStatus byte
+type RunResponseStatus byte
 
 const (
-	ScheduleResponseStatusSuccess ScheduleResponseStatus = iota
-	ScheduleResponseStatusAlreadyRunning
-	ScheduleResponseStatusNameDisplayAlreadyRunning
-	ScheduleResponseStatusInvalidDisplay
-	ScheduleResponseStatusTaskNotFound       // only for reschedule
-	ScheduleResponseStatusTaskNotDeactivated // only for reschedule
-	ScheduleResponseStatusUnknown
+	RunResponseStatusSuccess RunResponseStatus = iota
+	RunResponseStatusAlreadyRunning
+	RunResponseStatusNameDisplayAlreadyRunning
+	RunResponseStatusInvalidDisplay
+	RunResponseStatusTaskNotFound       // only for reEncodeRunResponsePacket
+	RunResponseStatusTaskNotDeactivated // only for reEncodeRunResponsePacket
+	RunResponseStatusUnknown
 )

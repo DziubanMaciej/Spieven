@@ -9,20 +9,20 @@
 
 
 # Usage
-This application is CLI-only. It exposes various commands, such as `spieven schedule`. The `schedule` command is by far the most important. It registers a task to be run along with all additional parameters, including timeout between executions, maximum number of failures, a name to easily identify the task, or the display to run the task on.
+This application is CLI-only. It exposes various commands, such as `spieven run`. The `run` command is by far the most important. It registers a task to be run along with all additional parameters, including timeout between executions, maximum number of failures, a name to easily identify the task, or the display to run the task on.
 
-Tasks can be deactivated for various reasons, meaning *Spieven* will stop running them. It does not forget about them, however. The logs can be inspected with `spieven peek TASK_ID`, and the tasks can be reactivated with the `spieven reschedule TASK_ID` command.
+Tasks can be deactivated for various reasons, meaning *Spieven* will stop running them. It does not forget about them, however. The logs can be inspected with `spieven peek TASK_ID`, and the tasks can be rerun with the `spieven resume TASK_ID` command.
 
 Tasks can be queried with `spieven list`. This command returns various metadata about all active tasks and optionally inactive tasks as well. This command also supports `--json` switch to serialize all data into JSON, making it easily parseable in scripts.
 
-Typically *Spieven* tasks should be scheduled in a script that is run once per display init, for example `.xinitrc` or `~/.config/autostart/*.desktop` files.
+Typically *Spieven* tasks should be run in a script that is run once per display init, for example `.xinitrc` or `~/.config/autostart/*.desktop` files.
 
 
 
 # Examples
-Schedule a task to display a GUI notification every 2 seconds:
+Run a task to display a GUI notification every 2 seconds:
 ```
-spieven schedule -s 2000 notify-send "Hello world"
+spieven run -s 2000 notify-send "Hello world"
 ```
 
 Cancel the 2 second wait and display the notification immediately (assuming the task ID was 0):
@@ -30,9 +30,9 @@ Cancel the 2 second wait and display the notification immediately (assuming the 
 spieven refresh -i 0
 ```
 
-Schedule a task to try to run `picom` on Xorg display `:2`, but try only 3 times. After 3 failures, deactivate the task:
+Run a task to try to launch `picom` on Xorg display `:2`, but try only 3 times. After 3 failures, deactivate the task:
 ```
-spieven schedule -p x:2 -m 3 picom
+spieven run -p x:2 -m 3 picom
 ```
 
 List tasks running on Xorg display `:2`, including deactivated tasks:
@@ -47,21 +47,21 @@ spieven peek 3
 
 Reactivate the task with the same parameters:
 ```
-spieven reschedule 3
+spieven resume 3
 ```
 
 Get the help message with all available options:
 ```
 spieven -h
-spieven schedule -h
+spieven run -h
 spieven list -h
 ```
 
 
 # Architecture
-Internally *Spieven* works in a client-server architecture, here called frontend and backend. The frontend and backend connect via a local TCP socket. All commands such as `spieven schedule`, `spieven list`, `spieven refresh`, etc. are considered frontend commands. The backend is run by the `spieven serve` command, but generally it does not have to be manually started by the user, because frontend commands automatically launch the backend if it is not running. Alternatively, it could be run with an OS process supervisor, such as systemd, but there is no real need for that.
+Internally *Spieven* works in a client-server architecture, here called frontend and backend. The frontend and backend connect via a local TCP socket. All commands such as `spieven run`, `spieven list`, `spieven refresh`, etc. are considered frontend commands. The backend is run by the `spieven serve` command, but generally it does not have to be manually started by the user, because frontend commands automatically launch the backend if it is not running. Alternatively, it could be run with an OS process supervisor, such as systemd, but there is no real need for that.
 
-The majority of *Spieven* logic lives in the backend, which manages and runs the tasks, caches the results, monitors display state, and handles frontend commands. Frontend commands mainly convert command-line arguments to TCP packets and send them to the backend. Most of the frontend commands exit immediately after sending a packet to the backend and receiving a response. For example, if the `spieven schedule` command exits immediately, it does not mean the task has ended. It is running in the background as a backend's subprocess.
+The majority of *Spieven* logic lives in the backend, which manages and runs the tasks, caches the results, monitors display state, and handles frontend commands. Frontend commands mainly convert command-line arguments to TCP packets and send them to the backend. Most of the frontend commands exit immediately after sending a packet to the backend and receiving a response. For example, if the `spieven run` command exits immediately, it does not mean the task has ended. It is running in the background as a backend's subprocess.
 
 It is worth noting that *Spieven*'s frontend and backend are really the very same binary file and *Spieven* verifies that. There is no compatibility support in the communication protocol between them. Only command-line interface is meant to be stable.
 

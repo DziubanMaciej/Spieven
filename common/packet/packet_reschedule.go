@@ -1,25 +1,25 @@
 package packet
 
-type RescheduleRequestBody struct {
+type ResumeRequestBody struct {
 	TaskId int
 }
 
-func EncodeReschedulePacket(body RescheduleRequestBody) (Packet, error) {
-	return EncodePacket(PacketIdReschedule, body)
+func EncodeResumePacket(body ResumeRequestBody) (Packet, error) {
+	return EncodePacket(PacketIdResume, body)
 }
 
-func DecodeReschedulePacket(packet Packet) (body RescheduleRequestBody, err error) {
-	err = DecodePacket(packet, PacketIdReschedule, &body)
+func DecodeResumePacket(packet Packet) (body ResumeRequestBody, err error) {
+	err = DecodePacket(packet, PacketIdResume, &body)
 	return
 }
 
-type RescheduleResponseBody ScheduleResponseBody
+type ResumeResponseBody RunResponseBody
 
-func EncodeRescheduleResponsePacket(body RescheduleResponseBody) (Packet, error) {
-	return EncodePacket(PacketIdRescheduleResponse, body)
+func EncodeResumeResponsePacket(body ResumeResponseBody) (Packet, error) {
+	return EncodePacket(PacketIdResumeResponse, body)
 }
 
-func DecodeRescheduleResponsePacket(packet Packet) (result RescheduleResponseBody, err error) {
-	err = DecodePacket(packet, PacketIdRescheduleResponse, &result)
+func DecodeResumeResponsePacket(packet Packet) (result ResumeResponseBody, err error) {
+	err = DecodePacket(packet, PacketIdResumeResponse, &result)
 	return
 }

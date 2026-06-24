@@ -43,7 +43,7 @@ func ValidateStrings(val []string, stringName string, validationType ValidationT
 	return nil
 }
 
-func ValidateScheduleRequestBody(val *packet.ScheduleRequestBody) error {
+func ValidateRunRequestBody(val *packet.RunRequestBody) error {
 	if err := ValidateString(val.Cwd, "field cwd", ValidationTypeGeneric); err != nil {
 		return err
 	}

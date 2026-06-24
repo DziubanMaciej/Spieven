@@ -256,7 +256,7 @@ func CmdList(
 	return nil
 }
 
-func CmdSchedule(
+func CmdRun(
 	backendConnection net.Conn,
 	args []string,
 	friendlyName string,
@@ -267,7 +267,7 @@ func CmdSchedule(
 	rerunDelayAfterFailure int,
 	maxSubsequentFailures int,
 	tags []string,
-) (*packet.ScheduleResponseBody, error) {
+) (*packet.RunResponseBody, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		var found bool
@@ -281,7 +281,7 @@ func CmdSchedule(
 		friendlyName = args[0]
 	}
 
-	body := packet.ScheduleRequestBody{
+	body := packet.RunRequestBody{
 		Cmdline:               args,
 		Cwd:                   cwd,
 		Env:                   os.Environ(),
@@ -295,12 +295,12 @@ func CmdSchedule(
 		Tags:                  tags,
 	}
 
-	err = ValidateScheduleRequestBody(&body)
+	err = ValidateRunRequestBody(&body)
 	if err != nil {
 		return nil, err
 	}
 
-	requestPacket, err := packet.EncodeSchedulePacket(body)
+	requestPacket, err := packet.EncodeRunPacket(body)
 	if err != nil {
 		return nil, err
 	}
@@ -315,27 +315,27 @@ func CmdSchedule(
 		return nil, err
 	}
 
-	response, err := packet.DecodeScheduleResponsePacket(responsePacket)
+	response, err := packet.DecodeRunResponsePacket(responsePacket)
 	if err != nil {
 		return nil, err
 	}
 
 	switch response.Status {
-	case types.ScheduleResponseStatusSuccess:
-		fmt.Println("Scheduled task")
+	case types.RunResponseStatusSuccess:
+		fmt.Println("Run task")
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
-	case types.ScheduleResponseStatusAlreadyRunning:
-		err = errors.New("task is already scheduled. To run multiple instances of the same task use friendly name. See help message for details")
+	case types.RunResponseStatusAlreadyRunning:
+		err = errors.New("task is already running. To run multiple instances of the same task use friendly name. See help message for details")
 		return nil, err
-	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
+	case types.RunResponseStatusNameDisplayAlreadyRunning:
 		err = fmt.Errorf("task named %v is already running on current display", friendlyName)
 		return nil, err
-	case types.ScheduleResponseStatusInvalidDisplay:
+	case types.RunResponseStatusInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err
 	default:
-		err = errors.New("unknown scheduling error")
+		err = errors.New("unknown task run error")
 		return nil, err
 	}
 }
@@ -493,12 +493,12 @@ func CmdRefresh(backendConnection net.Conn, filter types.TaskFilter) error {
 	return nil
 }
 
-func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleResponseBody, error) {
-	request := packet.RescheduleRequestBody{
+func CmdResume(backendConnection net.Conn, taskId int) (*packet.ResumeResponseBody, error) {
+	request := packet.ResumeRequestBody{
 		TaskId: taskId,
 	}
 
-	requestPacket, err := packet.EncodeReschedulePacket(request)
+	requestPacket, err := packet.EncodeResumePacket(request)
 	if err != nil {
 		return nil, err
 	}
@@ -513,33 +513,33 @@ func CmdReschedule(backendConnection net.Conn, taskId int) (*packet.RescheduleRe
 		return nil, err
 	}
 
-	response, err := packet.DecodeRescheduleResponsePacket(responsePacket)
+	response, err := packet.DecodeResumeResponsePacket(responsePacket)
 	if err != nil {
 		return nil, err
 	}
 
 	switch response.Status {
-	case types.ScheduleResponseStatusSuccess:
-		fmt.Println("Rescheduled task")
+	case types.RunResponseStatusSuccess:
+		fmt.Println("Resumed task")
 		fmt.Println("Log file: ", response.LogFile)
 		return &response, nil
-	case types.ScheduleResponseStatusAlreadyRunning:
-		err = fmt.Errorf("task is already scheduled. Looks like you scheduled an identical task after task %v was deactivated", taskId)
+	case types.RunResponseStatusAlreadyRunning:
+		err = fmt.Errorf("task is already running. Looks like you ran an identical task after task %v was deactivated", taskId)
 		return nil, err
-	case types.ScheduleResponseStatusNameDisplayAlreadyRunning:
-		err = fmt.Errorf("task with this name is already running on current display. Looks like you scheduled an identical task after task %v was deactivated", taskId)
+	case types.RunResponseStatusNameDisplayAlreadyRunning:
+		err = fmt.Errorf("task with this name is already running on current display. Looks like you ran an identical task after task %v was deactivated", taskId)
 		return nil, err
-	case types.ScheduleResponseStatusInvalidDisplay:
+	case types.RunResponseStatusInvalidDisplay:
 		err = errors.New("task is using invalid display")
 		return nil, err
-	case types.ScheduleResponseStatusTaskNotFound:
+	case types.RunResponseStatusTaskNotFound:
 		err = errors.New("task not found")
 		return nil, err
-	case types.ScheduleResponseStatusTaskNotDeactivated:
+	case types.RunResponseStatusTaskNotDeactivated:
 		err = errors.New("task is already active")
 		return nil, err
 	default:
-		err = errors.New("unknown rescheduling error")
+		err = errors.New("unknown resuming error")
 		return nil, err
 	}
 }

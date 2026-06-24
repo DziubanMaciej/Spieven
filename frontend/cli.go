@@ -114,20 +114,20 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		)
 
 		longDescription := "Schedule a new task. By default all option arguments (starting with hyphens) will be interpreted " +
-			"as Spieven arguments. To pass option arguments to the actual command to be scheduled, use a -- separator before " +
+			"as Spieven arguments. To pass option arguments to the actual command to be run, use a -- separator before " +
 			"the command. Examples:" +
-			"\n  spieven schedule notify-send 'Hello'                                       # OK: no ptions" +
-			"\n  spieven schedule --delay-after-success 1000 notify-send 'Hello'            # OK: only Spieven options" +
-			"\n  spieven schedule --delay-after-success 1000 notify-send 'Hello' -t 500     # Probably NOT OK: -t will be treated as a Spieven option" +
-			"\n  spieven schedule --delay-after-success 1000 -- notify-send 'Hello' -t 500  # OK: -t will be treated as notify-send option" +
+			"\n  spieven run notify-send 'Hello'                                       # OK: no ptions" +
+			"\n  spieven run --delay-after-success 1000 notify-send 'Hello'            # OK: only Spieven options" +
+			"\n  spieven run --delay-after-success 1000 notify-send 'Hello' -t 500     # Probably NOT OK: -t will be treated as a Spieven option" +
+			"\n  spieven run --delay-after-success 1000 -- notify-send 'Hello' -t 500  # OK: -t will be treated as notify-send option" +
 			"\n" +
-			"\nThe scheduled task can be rejected by Spieven backend for a number of reasons, e.g. duplicate task. In that case the " +
-			"schedule command will fail and print appropriate error string. The schedule command will succeed as long as Spieven " +
+			"\nThe requested task can be rejected by Spieven backend for a number of reasons, e.g. duplicate task. In that case the " +
+			"run command will fail and print appropriate error string. The run command will succeed as long as Spieven " +
 			"backend decides it can run the task. This doesn't neccessarily mean the task itself can succeed - it can fail immediately " +
 			"or at any point in the future. In order to query the state of running task, use list or peek command."
 
 		cmd := &cobra.Command{
-			Use:   "schedule [OPTIONS...] [--] COMMAND [COMMAND_ARGS...]",
+			Use:   "run [OPTIONS...] [--] COMMAND [COMMAND_ARGS...]",
 			Short: "Schedule a new task",
 			Long:  longDescription,
 			Args:  cobra.MinimumNArgs(1),
@@ -140,7 +140,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend(!noAutoRun, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
-					response, err := CmdSchedule(connection, args, friendlyName, captureStdout, captureStderr,
+					response, err := CmdRun(connection, args, friendlyName, captureStdout, captureStderr,
 						displaySelection, rerunDelayAfterSuccess, rerunDelayAfterFailure, maxSubsequentFailures, tags)
 					if err != nil {
 						return err
@@ -161,8 +161,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 		cmd.Flags().BoolVarP(&captureStdout, "capture-stdout", "c", false, "Capture stdout to a separate file. This is required to be able to query stdout contents later.")
 		cmd.Flags().BoolVarP(&captureStderr, "capture-stderr", "e", false, "Capture stderr to a separate file. This is required to be able to query stderr contents later.")
 		cmd.Flags().StringVarP(&display, "display", "p", "", "Force a specific display. "+types.DisplaySelectionHelpString)
-		cmd.Flags().IntVarP(&rerunDelayAfterSuccess, "delay-after-success", "s", 0, "Delay in milliseconds before rerunning scheduled command after a successful execution")
-		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning scheduled command after a failed execution")
+		cmd.Flags().IntVarP(&rerunDelayAfterSuccess, "delay-after-success", "s", 0, "Delay in milliseconds before rerunning EncodeRunResponsePacketd command after a successful execution")
+		cmd.Flags().IntVarP(&rerunDelayAfterFailure, "delay-after-failure", "f", 0, "Delay in milliseconds before rerunning EncodeRunResponsePacketd command after a failed execution")
 		cmd.Flags().IntVarP(&maxSubsequentFailures, "max-subsequent-failures", "m", 3, "Specify a number of command failures in a row after which the task will become deactivated. Specify -1 for no limit.")
 		cmd.Flags().StringSliceVarP(&tags, "tags", "t", []string{}, "Specify comma-separated list of tags for the task. Task do not have any effect, but they can be used to filter tasks.")
 		cmd.Flags().BoolVar(&noAutoRun, "no-auto-run", false, "Do not automatically start the backend if it is not running")
@@ -255,8 +255,8 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			commonFlags CommonFlags
 		)
 		cmd := &cobra.Command{
-			Use:   "reschedule TASK_ID [OPTIONS...]",
-			Short: "Reschedule a deactivated task by its ID.",
+			Use:   "resume TASK_ID [OPTIONS...]",
+			Short: "EncodeRunResponsePacket a stopped task again by its ID.",
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				taskId, err := strconv.Atoi(args[0])
@@ -267,7 +267,7 @@ func CreateCliCommands() (commands []*cobra.Command) {
 				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
 				if err == nil {
 					defer connection.Close()
-					response, err := CmdReschedule(connection, taskId)
+					response, err := CmdResume(connection, taskId)
 					if err != nil {
 						return err
 					}
