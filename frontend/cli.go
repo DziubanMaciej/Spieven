@@ -229,9 +229,11 @@ func CreateCliCommands() (commands []*cobra.Command) {
 			Args:  cobra.ExactArgs(0),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				filter := types.TaskFilter{
-					IdFilter:      idFilter,
-					AnyNameFilter: anyNameFilter,
-					AllTagsFilter: allTagsFilter,
+					IdFilter:           idFilter,
+					AnyNameFilter:      anyNameFilter,
+					AllTagsFilter:      allTagsFilter,
+					IncludeActive:      true,
+					IncludeDeactivated: false,
 				}
 
 				connection, err := ConnectToBackend(false, commonFlags.serverAddress, commonFlags.serverPort)
