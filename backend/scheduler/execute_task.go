@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	i "spieven/backend/interfaces"
 	"spieven/common"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -17,6 +19,11 @@ func ExecuteTask(
 	goroutines i.IGoroutines,
 	messages i.IMessages,
 ) {
+	// Lock the goroutine to OS thread to avoid spurious execution of pdeathsig (it happens at the end of a thread, not
+	// a process).
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	// Initialize per-task logger
 	perTaskLogger := CreateFileLogger(files, goroutines, task.Computed.Id, task.CaptureStdout, task.CaptureStderr)
 	err := perTaskLogger.run()
@@ -92,6 +99,14 @@ func ExecuteTask(
 		cmdContext, cmdCancel := context.WithCancel(*goroutines.GetContext())
 		defer cmdCancel()
 		cmd := exec.CommandContext(cmdContext, task.Cmdline[0], task.Cmdline[1:]...)
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid:   true,            // Create a new process group
+			Pdeathsig: syscall.SIGTERM, // Automatic SIGTERM by the kernel when the thread dies
+		}
+		cmd.Cancel = func() error {
+			pgid := cmd.Process.Pid
+			return syscall.Kill(-pgid, syscall.SIGTERM) // kill the entire group
+		}
 		cmd.Dir = task.Cwd
 		cmd.Env = task.Env
 		stdoutPipe, err := cmd.StdoutPipe()

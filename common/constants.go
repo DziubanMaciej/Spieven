@@ -2,4 +2,4 @@ package common
 
 import "spieven/common/buildopts"
 
-const Version = "2.1.0" + buildopts.VersionSuffix
+const Version = "2.1.1" + buildopts.VersionSuffix
